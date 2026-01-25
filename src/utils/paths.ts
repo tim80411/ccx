@@ -3,18 +3,18 @@ import { join } from "path";
 
 /**
  * 取得 Claude Code 設定檔路徑
- * @returns ~/.claude/settings.json
+ * @returns ~/.claude/settings.json（可用 CCX_CLAUDE_SETTINGS 環境變數覆蓋）
  */
 export function getClaudeSettingsPath(): string {
-  return join(homedir(), ".claude", "settings.json");
+  return process.env.CCX_CLAUDE_SETTINGS || join(homedir(), ".claude", "settings.json");
 }
 
 /**
  * 取得 CCX 設定檔目錄
- * @returns ~/.config/ccx/settings/
+ * @returns ~/.config/ccx/settings/（可用 CCX_SETTINGS_DIR 環境變數覆蓋）
  */
 export function getCcxSettingsDir(): string {
-  return join(homedir(), ".config", "ccx", "settings");
+  return process.env.CCX_SETTINGS_DIR || join(homedir(), ".config", "ccx", "settings");
 }
 
 /**
