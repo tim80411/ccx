@@ -48,20 +48,25 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       id-token: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js (for npm registry auth)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Publish to npm with provenance
-        run: npm publish --provenance --access public
+        run: bunx npm publish --provenance --access public
 
   update-homebrew:
     needs: build
