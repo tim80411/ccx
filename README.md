@@ -1,11 +1,26 @@
-# CCX (Claude Code eXtension)
+# CCX (Claude Code Context)
 
 CLI 工具，用於管理多個 Claude Code 設定檔 profiles。可在不同情境（工作、個人、專案）之間快速切換 `~/.claude/settings.json` 設定。
 
 ## 安裝
 
+### Homebrew (推薦)
+
 ```bash
-# 從原始碼安裝
+brew tap tim80411/tap
+brew install ccx
+```
+
+更新：
+
+```bash
+brew update
+brew upgrade ccx
+```
+
+### 從原始碼安裝
+
+```bash
 git clone <repository-url>
 cd ccx
 bun install
