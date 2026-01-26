@@ -4,7 +4,7 @@ import {
   getSettingPath,
   getPreviousPath,
 } from "../utils/paths";
-import { ensureDir, copyFile, fileExists, listJsonFiles } from "../utils/fs";
+import { ensureDir, copyFile, fileExists, listJsonFiles, readFile } from "../utils/fs";
 
 /**
  * 建立新的 setting profile
@@ -93,4 +93,34 @@ export async function update(name: string): Promise<string> {
   await copyFile(claudePath, settingPath);
 
   return `✓ update: ${name}`;
+}
+
+/**
+ * 取得 Claude settings 檔案路徑
+ * @returns 路徑字串
+ */
+export async function path(): Promise<string> {
+  return getClaudeSettingsPath();
+}
+
+/**
+ * 顯示當前 Claude settings 內容
+ * @param options.raw 是否輸出非格式化的 JSON
+ * @returns JSON 字串
+ */
+export async function show(options?: { raw?: boolean }): Promise<string> {
+  const claudePath = getClaudeSettingsPath();
+
+  if (!(await fileExists(claudePath))) {
+    throw new Error("Claude settings 檔案不存在");
+  }
+
+  const content = await readFile(claudePath);
+  const parsed = JSON.parse(content);
+
+  if (options?.raw) {
+    return JSON.stringify(parsed);
+  }
+
+  return JSON.stringify(parsed, null, 2);
 }
