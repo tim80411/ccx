@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm, writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { ensureDir, copyFile, fileExists, listJsonFiles } from "./fs";
+import { ensureDir, copyFile, fileExists, listJsonFiles, readFile } from "./fs";
 
 describe("fs", () => {
   let tempDir: string;
@@ -98,6 +98,22 @@ describe("fs", () => {
       const nonExistDir = join(tempDir, "non-exist");
       const files = await listJsonFiles(nonExistDir);
       expect(files).toEqual([]);
+    });
+  });
+
+  describe("readFile", () => {
+    test("應讀取檔案內容", async () => {
+      const filePath = join(tempDir, "test.json");
+      const content = '{"key": "value"}';
+      await writeFile(filePath, content);
+
+      const result = await readFile(filePath);
+      expect(result).toBe(content);
+    });
+
+    test("檔案不存在時應拋出錯誤", async () => {
+      const filePath = join(tempDir, "not-exists.json");
+      await expect(readFile(filePath)).rejects.toThrow();
     });
   });
 });

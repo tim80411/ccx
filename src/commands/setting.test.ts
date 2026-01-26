@@ -161,4 +161,39 @@ describe("setting commands", () => {
       expect(savedContent).toBe(newContent);
     });
   });
+
+  describe("path()", () => {
+    test("應回傳 Claude settings 檔案路徑", async () => {
+      const { path } = await import("./setting");
+      const result = await path();
+      expect(result).toBe(claudeSettingsPath);
+    });
+  });
+
+  describe("show()", () => {
+    test("應回傳格式化的 JSON 內容", async () => {
+      const { show } = await import("./setting");
+      const content = { key: "value", nested: { foo: "bar" } };
+      await writeFile(claudeSettingsPath, JSON.stringify(content));
+
+      const result = await show();
+
+      expect(result).toBe(JSON.stringify(content, null, 2));
+    });
+
+    test("使用 raw 選項時應回傳非格式化的 JSON", async () => {
+      const { show } = await import("./setting");
+      const content = { key: "value", nested: { foo: "bar" } };
+      await writeFile(claudeSettingsPath, JSON.stringify(content));
+
+      const result = await show({ raw: true });
+
+      expect(result).toBe(JSON.stringify(content));
+    });
+
+    test("檔案不存在時應拋出錯誤", async () => {
+      const { show } = await import("./setting");
+      await expect(show()).rejects.toThrow("Claude settings 檔案不存在");
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { mkdir, copyFile as fsCopyFile, readdir, access } from "fs/promises";
+import { mkdir, copyFile as fsCopyFile, readdir, access, readFile as fsReadFile } from "fs/promises";
 import { join, basename } from "path";
 
 /**
@@ -46,4 +46,13 @@ export async function listJsonFiles(dir: string): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+/**
+ * 讀取檔案內容
+ * @param path 檔案路徑
+ * @returns 檔案內容字串
+ */
+export async function readFile(path: string): Promise<string> {
+  return await fsReadFile(path, "utf-8");
 }

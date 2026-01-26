@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { create, list, use, update } from "./commands/setting";
+import { create, list, use, update, path, show } from "./commands/setting";
 
 const program = new Command();
 
@@ -57,6 +57,33 @@ setting
   .action(async (name: string) => {
     try {
       const result = await update(name);
+      console.log(result);
+    } catch (error) {
+      console.error((error as Error).message);
+      process.exit(1);
+    }
+  });
+
+setting
+  .command("path")
+  .description("顯示 Claude settings 檔案路徑")
+  .action(async () => {
+    try {
+      const result = await path();
+      console.log(result);
+    } catch (error) {
+      console.error((error as Error).message);
+      process.exit(1);
+    }
+  });
+
+setting
+  .command("show")
+  .description("顯示當前 Claude settings 內容")
+  .option("--raw", "輸出非格式化的 JSON")
+  .action(async (options: { raw?: boolean }) => {
+    try {
+      const result = await show(options);
       console.log(result);
     } catch (error) {
       console.error((error as Error).message);
