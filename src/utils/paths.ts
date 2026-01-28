@@ -6,7 +6,13 @@ import { join } from "path";
  * @returns ~/.claude/settings.json（可用 CCX_CLAUDE_SETTINGS 環境變數覆蓋）
  */
 export function getClaudeSettingsPath(): string {
-  return process.env.CCX_CLAUDE_SETTINGS || join(homedir(), ".claude", "settings.json");
+  if (process.env.CCX_CLAUDE_SETTINGS) {
+    return process.env.CCX_CLAUDE_SETTINGS;
+  }
+  if (process.env.CLAUDE_CONFIG_DIR) {
+    return join(process.env.CLAUDE_CONFIG_DIR, "settings.json");
+  }
+  return join(homedir(), ".claude", "settings.json");
 }
 
 /**

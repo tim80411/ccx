@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { homedir } from "os";
 import { join } from "path";
 import {
@@ -12,9 +12,45 @@ describe("paths", () => {
   const home = homedir();
 
   describe("getClaudeSettingsPath", () => {
-    test("應回傳 ~/.claude/settings.json", () => {
+    let originalCcxClaudeSettings: string | undefined;
+    let originalClaudeConfigDir: string | undefined;
+
+    beforeEach(() => {
+      originalCcxClaudeSettings = process.env.CCX_CLAUDE_SETTINGS;
+      originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+      delete process.env.CCX_CLAUDE_SETTINGS;
+      delete process.env.CLAUDE_CONFIG_DIR;
+    });
+
+    afterEach(() => {
+      if (originalCcxClaudeSettings !== undefined) {
+        process.env.CCX_CLAUDE_SETTINGS = originalCcxClaudeSettings;
+      } else {
+        delete process.env.CCX_CLAUDE_SETTINGS;
+      }
+      if (originalClaudeConfigDir !== undefined) {
+        process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir;
+      } else {
+        delete process.env.CLAUDE_CONFIG_DIR;
+      }
+    });
+
+    test("應回傳 ~/.claude/settings.json（預設）", () => {
       expect(getClaudeSettingsPath()).toBe(
         join(home, ".claude", "settings.json")
+      );
+    });
+
+    test("CCX_CLAUDE_SETTINGS 應有最高優先權", () => {
+      process.env.CCX_CLAUDE_SETTINGS = "/custom/path/settings.json";
+      process.env.CLAUDE_CONFIG_DIR = "/other/dir";
+      expect(getClaudeSettingsPath()).toBe("/custom/path/settings.json");
+    });
+
+    test("CLAUDE_CONFIG_DIR 應優先於預設路徑", () => {
+      process.env.CLAUDE_CONFIG_DIR = "/custom/claude-config";
+      expect(getClaudeSettingsPath()).toBe(
+        join("/custom/claude-config", "settings.json")
       );
     });
   });
