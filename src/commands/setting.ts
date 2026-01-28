@@ -1,3 +1,4 @@
+import select from "@inquirer/select";
 import {
   getClaudeSettingsPath,
   getCcxSettingsDir,
@@ -123,4 +124,21 @@ export async function show(options?: { raw?: boolean }): Promise<string> {
   }
 
   return JSON.stringify(parsed, null, 2);
+}
+
+/**
+ * 互動式選擇 setting profile
+ * @returns 選擇的 setting 名稱
+ */
+export async function selectProfile(): Promise<string> {
+  const settings = await listJsonFiles(getCcxSettingsDir());
+
+  if (settings.length === 0) {
+    throw new Error("尚無任何 setting，使用 'ccx setting create <name>' 建立");
+  }
+
+  return await select({
+    message: "選擇要使用的 setting profile",
+    choices: settings.map((s) => ({ name: s, value: s })),
+  });
 }

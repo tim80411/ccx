@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { describe, expect, test, beforeEach, afterEach, mock } from "bun:test";
 import { mkdtemp, rm, writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -194,6 +194,30 @@ describe("setting commands", () => {
     test("檔案不存在時應拋出錯誤", async () => {
       const { show } = await import("./setting");
       await expect(show()).rejects.toThrow("Claude settings 檔案不存在");
+    });
+  });
+
+  describe("selectProfile()", () => {
+    test("無 profile 時應拋出錯誤", async () => {
+      const { selectProfile } = await import("./setting");
+      await expect(selectProfile()).rejects.toThrow(
+        "尚無任何 setting，使用 'ccx setting create <name>' 建立"
+      );
+    });
+
+    test("有 profile 時應呼叫 select 並回傳選擇的名稱", async () => {
+      // Mock @inquirer/select to return "work"
+      mock.module("@inquirer/select", () => ({
+        default: async () => "work",
+      }));
+
+      await writeFile(join(ccxDir, "work.json"), "{}");
+      await writeFile(join(ccxDir, "personal.json"), "{}");
+
+      const { selectProfile } = await import("./setting");
+      const result = await selectProfile();
+
+      expect(result).toBe("work");
     });
   });
 });

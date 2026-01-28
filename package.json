@@ -45,6 +45,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@inquirer/select": "^5.0.4",
     "commander": "^14.0.2"
   },
   "packageManager": "pnpm@9.13.0+sha256.5cc43c266a7e1f28e35cb9e6b33694e424198d6d778e315b9c06313d2f6dab7b"
