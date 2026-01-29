@@ -16,11 +16,19 @@ export function getClaudeSettingsPath(): string {
 }
 
 /**
+ * 取得 CCX 根目錄
+ * @returns ~/.config/ccx/（可用 CCX_BASE_DIR 環境變數覆蓋）
+ */
+export function getCcxBaseDir(): string {
+  return process.env.CCX_BASE_DIR || join(homedir(), ".config", "ccx");
+}
+
+/**
  * 取得 CCX 設定檔目錄
  * @returns ~/.config/ccx/settings/（可用 CCX_SETTINGS_DIR 環境變數覆蓋）
  */
 export function getCcxSettingsDir(): string {
-  return process.env.CCX_SETTINGS_DIR || join(homedir(), ".config", "ccx", "settings");
+  return process.env.CCX_SETTINGS_DIR || join(getCcxBaseDir(), "settings");
 }
 
 /**
@@ -38,4 +46,12 @@ export function getSettingPath(name: string): string {
  */
 export function getPreviousPath(): string {
   return join(getCcxSettingsDir(), "previous.json");
+}
+
+/**
+ * 取得 state.json 狀態檔路徑
+ * @returns ~/.config/ccx/state.json
+ */
+export function getStatePath(): string {
+  return join(getCcxBaseDir(), "state.json");
 }

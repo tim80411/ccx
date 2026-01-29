@@ -41,10 +41,11 @@ setting
 setting
   .command("use [name]")
   .description("切換到指定的 setting profile（未指定名稱時互動選擇）")
-  .action(async (name?: string) => {
+  .option("-f, --force", "強制切換，跳過修改檢查")
+  .action(async (name?: string, options?: { force?: boolean }) => {
     try {
       const selectedName = name ?? (await selectProfile());
-      const result = await use(selectedName);
+      const result = await use(selectedName, options);
       console.log(result);
     } catch (error) {
       console.error((error as Error).message);

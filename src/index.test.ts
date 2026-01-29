@@ -7,7 +7,8 @@ import { $ } from "bun";
 describe("CLI 整合測試", () => {
   let tempDir: string;
   let claudeDir: string;
-  let ccxDir: string;
+  let ccxBaseDir: string;
+  let ccxSettingsDir: string;
   let claudeSettingsPath: string;
 
   const runCli = async (args: string, env: Record<string, string> = {}) => {
@@ -26,11 +27,12 @@ describe("CLI 整合測試", () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), "ccx-cli-test-"));
     claudeDir = join(tempDir, ".claude");
-    ccxDir = join(tempDir, ".config", "ccx", "settings");
+    ccxBaseDir = join(tempDir, ".config", "ccx");
+    ccxSettingsDir = join(ccxBaseDir, "settings");
     claudeSettingsPath = join(claudeDir, "settings.json");
 
     await mkdir(claudeDir, { recursive: true });
-    await mkdir(ccxDir, { recursive: true });
+    await mkdir(ccxSettingsDir, { recursive: true });
   });
 
   afterEach(async () => {
@@ -42,7 +44,8 @@ describe("CLI 整合測試", () => {
       await writeFile(claudeSettingsPath, "{}");
       const result = await runCli("setting create work", {
         CCX_CLAUDE_SETTINGS: claudeSettingsPath,
-        CCX_SETTINGS_DIR: ccxDir,
+        CCX_BASE_DIR: ccxBaseDir,
+        CCX_SETTINGS_DIR: ccxSettingsDir,
       });
 
       expect(result.stdout).toContain("✓ create: work");
@@ -52,7 +55,8 @@ describe("CLI 整合測試", () => {
     test("錯誤時應輸出到 stderr 並 exit 1", async () => {
       const result = await runCli("setting create work", {
         CCX_CLAUDE_SETTINGS: claudeSettingsPath,
-        CCX_SETTINGS_DIR: ccxDir,
+        CCX_BASE_DIR: ccxBaseDir,
+        CCX_SETTINGS_DIR: ccxSettingsDir,
       });
 
       expect(result.stderr).toContain("Claude settings");
@@ -62,11 +66,11 @@ describe("CLI 整合測試", () => {
 
   describe("setting list", () => {
     test("應列出所有 settings", async () => {
-      await writeFile(join(ccxDir, "work.json"), "{}");
-      await writeFile(join(ccxDir, "personal.json"), "{}");
+      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
+      await writeFile(join(ccxSettingsDir, "personal.json"), "{}");
 
       const result = await runCli("setting list", {
-        CCX_SETTINGS_DIR: ccxDir,
+        CCX_SETTINGS_DIR: ccxSettingsDir,
       });
 
       expect(result.stdout).toContain("work");
@@ -78,11 +82,13 @@ describe("CLI 整合測試", () => {
   describe("setting use <name>", () => {
     test("應成功切換 setting", async () => {
       await writeFile(claudeSettingsPath, JSON.stringify({ current: true }));
-      await writeFile(join(ccxDir, "work.json"), JSON.stringify({ work: true }));
+      await writeFile(join(ccxSettingsDir, "work.json"), JSON.stringify({ work: true }));
 
-      const result = await runCli("setting use work", {
+      // 使用 --force 跳過修改檢查（因為沒有狀態檔案時不會觸發，但為了安全起見）
+      const result = await runCli("setting use work --force", {
         CCX_CLAUDE_SETTINGS: claudeSettingsPath,
-        CCX_SETTINGS_DIR: ccxDir,
+        CCX_BASE_DIR: ccxBaseDir,
+        CCX_SETTINGS_DIR: ccxSettingsDir,
       });
 
       expect(result.stdout).toContain("✓ use: work");
@@ -92,7 +98,8 @@ describe("CLI 整合測試", () => {
     test("setting 不存在時應錯誤處理", async () => {
       const result = await runCli("setting use nonexist", {
         CCX_CLAUDE_SETTINGS: claudeSettingsPath,
-        CCX_SETTINGS_DIR: ccxDir,
+        CCX_BASE_DIR: ccxBaseDir,
+        CCX_SETTINGS_DIR: ccxSettingsDir,
       });
 
       expect(result.stderr).toContain("不存在");
@@ -103,11 +110,11 @@ describe("CLI 整合測試", () => {
   describe("setting update <name>", () => {
     test("應成功更新 setting", async () => {
       await writeFile(claudeSettingsPath, JSON.stringify({ updated: true }));
-      await writeFile(join(ccxDir, "work.json"), "{}");
+      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
 
       const result = await runCli("setting update work", {
         CCX_CLAUDE_SETTINGS: claudeSettingsPath,
-        CCX_SETTINGS_DIR: ccxDir,
+        CCX_SETTINGS_DIR: ccxSettingsDir,
       });
 
       expect(result.stdout).toContain("✓ update: work");

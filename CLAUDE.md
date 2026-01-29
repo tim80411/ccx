@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CCX (Claude Code eXtension) is a CLI tool for managing multiple Claude Code settings profiles. It allows switching between different `~/.claude/settings.json` configurations for different contexts (work, personal, projects).
+CCX (Claude Code eXtension) is a CLI tool for managing multiple Claude Code settings. It allows switching between different `~/.claude/settings.json` configurations for different contexts (work, personal, projects).
 
 ## Development Commands
 
@@ -50,7 +50,7 @@ src/
 | Purpose | Path |
 |---------|------|
 | Source settings | `~/.claude/settings.json` |
-| Stored profiles | `~/.config/ccx/settings/<name>.json` |
+| Stored settings | `~/.config/ccx/settings/<name>.json` |
 | Auto-backup | `~/.config/ccx/settings/previous.json` |
 
 ## Conventions
@@ -58,4 +58,4 @@ src/
 - Reserved name: `previous` (used for auto-backup on switch)
 - Output format: `✓ <action>: <name>` for success
 - Errors go to stderr with exit code 1
-- Namespace structure: `ccx <namespace> <action>` (designed for future expansion: mcp, claude, profile)
+- Namespace structure: `ccx <namespace> <action>` (designed for future expansion: mcp, claude, setting)
