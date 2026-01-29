@@ -6,9 +6,11 @@ import {
   getPreviousPath,
 } from "../utils/paths";
 import { ensureDir, copyFile, fileExists, listJsonFiles, readFile } from "../utils/fs";
+import { computeFileHash, saveState, loadState } from "../utils/state";
+import { confirmAction } from "../utils/prompt";
 
 /**
- * 建立新的 setting profile
+ * 建立新的 setting
  * @param name setting 名稱
  * @returns 成功訊息
  */
@@ -35,7 +37,7 @@ export async function create(name: string): Promise<string> {
 }
 
 /**
- * 列出所有 setting profiles
+ * 列出所有 settings
  * @returns 格式化的列表或提示訊息
  */
 export async function list(): Promise<string> {
@@ -49,11 +51,16 @@ export async function list(): Promise<string> {
 }
 
 /**
- * 切換到指定的 setting profile
+ * 切換到指定的 setting
  * @param name setting 名稱
+ * @param options.force 強制切換，跳過修改檢查
  * @returns 成功訊息
  */
-export async function use(name: string): Promise<string> {
+export async function use(name: string, options?: { force?: boolean }): Promise<string> {
+  if (name === "previous") {
+    throw new Error("'previous' 是保留名稱，無法使用");
+  }
+
   const settingPath = getSettingPath(name);
   const claudePath = getClaudeSettingsPath();
   const previousPath = getPreviousPath();
@@ -62,20 +69,40 @@ export async function use(name: string): Promise<string> {
     throw new Error(`Setting '${name}' 不存在`);
   }
 
+  if (!options?.force && (await fileExists(claudePath))) {
+    const state = await loadState();
+    if (state) {
+      const currentHash = await computeFileHash(claudePath);
+      if (currentHash !== state.claudeSettingsHash) {
+        const shouldContinue = await confirmAction(
+          `當前設定 (${state.currentSettingName}) 已被修改，切換到 '${name}' 將會遺失這些變更。是否繼續？`
+        );
+        if (!shouldContinue) {
+          throw new Error("已取消切換");
+        }
+      }
+    }
+  }
+
   // 備份當前設定到 previous.json
   if (await fileExists(claudePath)) {
     await ensureDir(getCcxSettingsDir());
     await copyFile(claudePath, previousPath);
   }
 
-  // 複製指定 setting 到 claude settings
   await copyFile(settingPath, claudePath);
+
+  const newHash = await computeFileHash(claudePath);
+  await saveState({
+    currentSettingName: name,
+    claudeSettingsHash: newHash,
+  });
 
   return `✓ use: ${name}`;
 }
 
 /**
- * 更新指定的 setting profile（從當前 claude settings 覆蓋）
+ * 更新指定的 setting（從當前 claude settings 覆蓋）
  * @param name setting 名稱
  * @returns 成功訊息
  */
@@ -92,6 +119,15 @@ export async function update(name: string): Promise<string> {
   }
 
   await copyFile(claudePath, settingPath);
+
+  const state = await loadState();
+  if (state?.currentSettingName === name) {
+    const newHash = await computeFileHash(claudePath);
+    await saveState({
+      currentSettingName: name,
+      claudeSettingsHash: newHash,
+    });
+  }
 
   return `✓ update: ${name}`;
 }
@@ -127,7 +163,7 @@ export async function show(options?: { raw?: boolean }): Promise<string> {
 }
 
 /**
- * 互動式選擇 setting profile
+ * 互動式選擇 setting
  * @returns 選擇的 setting 名稱
  */
 export async function selectProfile(): Promise<string> {

@@ -45,6 +45,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@inquirer/confirm": "^6.0.4",
     "@inquirer/select": "^5.0.4",
     "commander": "^14.0.2"
   },
