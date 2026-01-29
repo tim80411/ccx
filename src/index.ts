@@ -1,20 +1,20 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { create, list, use, update, path, show, selectProfile } from "./commands/setting";
+import { create, list, use, update, path, show, selectSetting } from "./commands/setting";
 
 const program = new Command();
 
 program
   .name("ccx")
-  .description("Claude Code eXtension - CLI 工具")
-  .version("0.1.0");
+  .description("Claude Code Context - CLI 工具")
+  .version(process.env.npm_package_version || "0.0.0");
 
 // setting 子命令群組
 const setting = program.command("setting").description("管理 Claude Code 設定檔");
 
 setting
   .command("create <name>")
-  .description("建立新的 setting profile")
+  .description("建立新的 setting")
   .action(async (name: string) => {
     try {
       const result = await create(name);
@@ -27,7 +27,7 @@ setting
 
 setting
   .command("list")
-  .description("列出所有 setting profiles")
+  .description("列出所有 settings")
   .action(async () => {
     try {
       const result = await list();
@@ -40,11 +40,11 @@ setting
 
 setting
   .command("use [name]")
-  .description("切換到指定的 setting profile（未指定名稱時互動選擇）")
+  .description("切換到指定的 setting（未指定名稱時互動選擇）")
   .option("-f, --force", "強制切換，跳過修改檢查")
   .action(async (name?: string, options?: { force?: boolean }) => {
     try {
-      const selectedName = name ?? (await selectProfile());
+      const selectedName = name ?? (await selectSetting());
       const result = await use(selectedName, options);
       console.log(result);
     } catch (error) {
@@ -55,7 +55,7 @@ setting
 
 setting
   .command("update <name>")
-  .description("更新指定的 setting profile（從當前 claude settings 覆蓋）")
+  .description("更新指定的 setting（從當前 claude settings 覆蓋）")
   .action(async (name: string) => {
     try {
       const result = await update(name);

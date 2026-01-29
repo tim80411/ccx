@@ -1,4 +1,4 @@
-# CCX - Claude Code eXtension CLI
+# CCX - Claude Code Context CLI
 
 ## 概述
 
