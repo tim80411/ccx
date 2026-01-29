@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { create, list, use, update, path, show } from "./commands/setting";
+import { create, list, use, update, path, show, selectProfile } from "./commands/setting";
 
 const program = new Command();
 
@@ -39,11 +39,12 @@ setting
   });
 
 setting
-  .command("use <name>")
-  .description("切換到指定的 setting profile")
-  .action(async (name: string) => {
+  .command("use [name]")
+  .description("切換到指定的 setting profile（未指定名稱時互動選擇）")
+  .action(async (name?: string) => {
     try {
-      const result = await use(name);
+      const selectedName = name ?? (await selectProfile());
+      const result = await use(selectedName);
       console.log(result);
     } catch (error) {
       console.error((error as Error).message);
