@@ -166,7 +166,7 @@ export async function show(options?: { raw?: boolean }): Promise<string> {
  * 互動式選擇 setting
  * @returns 選擇的 setting 名稱
  */
-export async function selectProfile(): Promise<string> {
+export async function selectSetting(): Promise<string> {
   const settings = await listJsonFiles(getCcxSettingsDir());
 
   if (settings.length === 0) {
@@ -174,7 +174,7 @@ export async function selectProfile(): Promise<string> {
   }
 
   return await select({
-    message: "選擇要使用的 setting profile",
+    message: "選擇要使用的 setting",
     choices: settings.map((s) => ({ name: s, value: s })),
   });
 }

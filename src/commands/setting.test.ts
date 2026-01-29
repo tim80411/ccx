@@ -172,7 +172,7 @@ describe("setting commands", () => {
 
       // 設定狀態為當前內容的 hash（模擬上次切換後的狀態）
       const hash = await computeFileHash(claudeSettingsPath);
-      await saveState({ activeProfile: "current", settingsHash: hash });
+      await saveState({ currentSettingName: "current", claudeSettingsHash: hash });
 
       // 不應該需要確認，應直接切換成功
       const result = await use("work");
@@ -189,7 +189,7 @@ describe("setting commands", () => {
       await writeFile(join(ccxSettingsDir, "work.json"), workContent);
 
       // 設定一個不匹配的 hash（模擬檔案被修改）
-      await saveState({ activeProfile: "current", settingsHash: "old-hash" });
+      await saveState({ currentSettingName: "current", claudeSettingsHash: "old-hash" });
 
       // 使用 --force 應該跳過確認
       const result = await use("work", { force: true });
@@ -229,7 +229,7 @@ describe("setting commands", () => {
       expect(savedContent).toBe(newContent);
     });
 
-    test("更新當前使用中的 profile 時應同步更新狀態", async () => {
+    test("更新當前使用中的 setting 時應同步更新狀態", async () => {
       const { update } = await import("./setting");
       const { saveState, loadState, computeFileHash } = await import("../utils/state");
 
@@ -237,9 +237,9 @@ describe("setting commands", () => {
       await writeFile(claudeSettingsPath, originalContent);
       await writeFile(join(ccxSettingsDir, "work.json"), "{}");
 
-      // 設定當前使用的是 work profile
+      // 設定當前使用的是 work setting
       const originalHash = await computeFileHash(claudeSettingsPath);
-      await saveState({ activeProfile: "work", settingsHash: "old-hash" });
+      await saveState({ currentSettingName: "work", claudeSettingsHash: originalHash });
 
       // 修改 settings.json 並執行 update
       const modifiedContent = JSON.stringify({ modified: true });
@@ -288,15 +288,15 @@ describe("setting commands", () => {
     });
   });
 
-  describe("selectProfile()", () => {
-    test("無 profile 時應拋出錯誤", async () => {
-      const { selectProfile } = await import("./setting");
-      await expect(selectProfile()).rejects.toThrow(
+  describe("selectSetting()", () => {
+    test("無 setting 時應拋出錯誤", async () => {
+      const { selectSetting } = await import("./setting");
+      await expect(selectSetting()).rejects.toThrow(
         "尚無任何 setting，使用 'ccx setting create <name>' 建立"
       );
     });
 
-    test("有 profile 時應呼叫 select 並回傳選擇的名稱", async () => {
+    test("有 setting 時應呼叫 select 並回傳選擇的名稱", async () => {
       // Mock @inquirer/select to return "work"
       mock.module("@inquirer/select", () => ({
         default: async () => "work",
@@ -305,8 +305,8 @@ describe("setting commands", () => {
       await writeFile(join(ccxSettingsDir, "work.json"), "{}");
       await writeFile(join(ccxSettingsDir, "personal.json"), "{}");
 
-      const { selectProfile } = await import("./setting");
-      const result = await selectProfile();
+      const { selectSetting } = await import("./setting");
+      const result = await selectSetting();
 
       expect(result).toBe("work");
     });

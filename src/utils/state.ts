@@ -8,7 +8,7 @@ import { fileExists, readFile, ensureDir } from "./fs";
  * - currentSettingName: 當前使用中的 setting 名稱
  * - claudeSettingsHash: 最後一次切換後 ~/.claude/settings.json 的 MD5 hash
  */
-export interface ProfileState {
+export interface SettingState {
   currentSettingName: string;
   claudeSettingsHash: string;
 }
@@ -35,7 +35,7 @@ export async function computeFileHash(filePath: string): Promise<string> {
  * 載入當前狀態
  * @returns 狀態物件，若不存在或無效則回傳 null
  */
-export async function loadState(): Promise<ProfileState | null> {
+export async function loadState(): Promise<SettingState | null> {
   const statePath = getStatePath();
 
   if (!(await fileExists(statePath))) {
@@ -61,7 +61,7 @@ export async function loadState(): Promise<ProfileState | null> {
  * 儲存狀態
  * @param state 狀態物件
  */
-export async function saveState(state: ProfileState): Promise<void> {
+export async function saveState(state: SettingState): Promise<void> {
   const statePath = getStatePath();
   await ensureDir(getCcxBaseDir());
   await writeFile(statePath, JSON.stringify(state, null, 2), "utf-8");
