@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { create, list, use, update, path, show, status, selectSetting } from "./commands/setting";
+import { create, list, use, update, path, show, status, selectSetting, diff } from "./commands/setting";
 import packageJson from "../package.json";
 
 const program = new Command();
@@ -41,6 +41,32 @@ function handleUseAction(
     } catch (error) {
       console.error((error as Error).message);
       process.exit(1);
+    }
+  };
+}
+
+/**
+ * Wrapper for diff command with Unix-style exit codes
+ * Exit 0: files identical (no output)
+ * Exit 1: files differ (output diff)
+ * Exit 2: error occurred
+ */
+function handleDiffAction(
+  fn: (arg1?: string, arg2?: string, options?: { semantic?: boolean }) => Promise<{ output: string; exitCode: number }>
+): (arg1?: string, arg2?: string, options?: { semantic?: boolean }) => Promise<void> {
+  return async (arg1?: string, arg2?: string, options?: { semantic?: boolean }) => {
+    try {
+      const { output, exitCode } = await fn(arg1, arg2, options);
+      if (output) {
+        console.log(output);
+      }
+      // Only force exit for non-zero codes; let 0 exit naturally
+      if (exitCode !== 0) {
+        process.exit(exitCode);
+      }
+    } catch (error) {
+      console.error((error as Error).message);
+      process.exit(2);
     }
   };
 }
@@ -87,6 +113,12 @@ setting
   .description("顯示當前使用中的 setting")
   .action(handleAction(status));
 
+setting
+  .command("diff [arg1] [arg2]")
+  .description("比較設定檔差異")
+  .option("--semantic", "顯示語意化差異（按 JSON key 分組）")
+  .action(handleDiffAction(diff));
+
 // Top-level aliases for setting commands
 program
   .command("create <name>")
@@ -126,5 +158,11 @@ program
   .command("status")
   .description("顯示當前使用中的 setting (alias for setting status)")
   .action(handleAction(status));
+
+program
+  .command("diff [arg1] [arg2]")
+  .description("比較設定檔差異 (alias for setting diff)")
+  .option("--semantic", "顯示語意化差異（按 JSON key 分組）")
+  .action(handleDiffAction(diff));
 
 program.parse();

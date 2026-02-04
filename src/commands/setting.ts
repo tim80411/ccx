@@ -9,6 +9,11 @@ import { ensureDir, copyFile, fileExists, listJsonFiles, readFile } from "../uti
 import { computeFileHash, saveState, loadState } from "../utils/state";
 import { confirmAction } from "../utils/prompt";
 import { resolveSettingPath, resolveSettingName, SettingTarget } from "../utils/target";
+import {
+  areFilesIdentical,
+  generateUnifiedDiff,
+  generateSemanticDiff,
+} from "../utils/diff";
 
 /**
  * 建立新的 setting
@@ -220,4 +225,84 @@ export async function selectSetting(): Promise<string> {
     message: "選擇要使用的 setting",
     choices: settings.map((s) => ({ name: s, value: s })),
   });
+}
+
+/**
+ * 比較兩個設定檔的差異
+ * @param arg1 第一個參數（可選）
+ * @param arg2 第二個參數（可選）
+ * @param options.semantic 是否使用語意化差異格式
+ * @returns 包含輸出和 exit code 的物件
+ */
+export async function diff(
+  arg1?: string,
+  arg2?: string,
+  options?: { semantic?: boolean }
+): Promise<{ output: string; exitCode: number }> {
+  // 解析目標
+  const { left, right } = resolveDiffTargets(arg1, arg2);
+
+  const leftPath = await resolveSettingPath(left);
+  const rightPath = await resolveSettingPath(right);
+
+  // 驗證檔案存在
+  if (left.type === "named" && !(await fileExists(leftPath))) {
+    throw new Error(`Setting '${left.name}' 不存在`);
+  }
+  if (left.type === "current" && !(await fileExists(leftPath))) {
+    throw new Error("Setting 檔案不存在");
+  }
+
+  if (right.type === "named" && !(await fileExists(rightPath))) {
+    throw new Error(`Setting '${right.name}' 不存在`);
+  }
+  if (right.type === "official" && !(await fileExists(rightPath))) {
+    throw new Error("Claude settings 檔案不存在");
+  }
+
+  // 檢查是否相同
+  if (await areFilesIdentical(leftPath, rightPath)) {
+    return { output: "", exitCode: 0 };
+  }
+
+  // 產生標籤
+  const leftLabel = (await resolveSettingName(left)) ?? "official";
+  const rightLabel = (await resolveSettingName(right)) ?? "official";
+
+  // 產生差異輸出
+  const output = options?.semantic
+    ? await generateSemanticDiff(leftPath, leftLabel, rightPath, rightLabel)
+    : await generateUnifiedDiff(leftPath, leftLabel, rightPath, rightLabel);
+
+  return { output, exitCode: 1 };
+}
+
+/**
+ * 解析 diff 指令的目標設定檔
+ */
+function resolveDiffTargets(
+  arg1?: string,
+  arg2?: string
+): { left: SettingTarget; right: SettingTarget } {
+  // ccx diff → current vs official
+  if (!arg1 && !arg2) {
+    return {
+      left: { type: "current" },
+      right: { type: "official" },
+    };
+  }
+
+  // ccx diff <name> → named vs official
+  if (arg1 && !arg2) {
+    return {
+      left: { type: "named", name: arg1 },
+      right: { type: "official" },
+    };
+  }
+
+  // ccx diff <name1> <name2> → named vs named
+  return {
+    left: { type: "named", name: arg1! },
+    right: { type: "named", name: arg2! },
+  };
 }

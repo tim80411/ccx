@@ -428,4 +428,105 @@ describe("setting commands", () => {
       expect(result).toBe("work");
     });
   });
+
+  describe("diff()", () => {
+    test("無參數時比對 current vs official", async () => {
+      const { diff } = await import("./setting");
+      const { saveState } = await import("../utils/state");
+
+      const currentContent = JSON.stringify({ key: "current" });
+      const officialContent = JSON.stringify({ key: "official" });
+
+      await writeFile(join(ccxSettingsDir, "work.json"), currentContent);
+      await writeFile(claudeSettingsPath, officialContent);
+      await saveState({ currentSettingName: "work", claudeSettingsHash: "abc" });
+
+      const result = await diff();
+
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("current");
+      expect(result.output).toContain("official");
+    });
+
+    test("無狀態時應拋出錯誤", async () => {
+      const { diff } = await import("./setting");
+      await expect(diff()).rejects.toThrow(
+        "目前無追蹤中的 setting，請先使用 'ccx setting use <name>' 切換"
+      );
+    });
+
+    test("一個參數時比對 named vs official", async () => {
+      const { diff } = await import("./setting");
+
+      const namedContent = JSON.stringify({ key: "named" });
+      const officialContent = JSON.stringify({ key: "official" });
+
+      await writeFile(join(ccxSettingsDir, "work.json"), namedContent);
+      await writeFile(claudeSettingsPath, officialContent);
+
+      const result = await diff("work");
+
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("named");
+      expect(result.output).toContain("official");
+    });
+
+    test("兩個參數時比對兩個 named settings", async () => {
+      const { diff } = await import("./setting");
+
+      const workContent = JSON.stringify({ key: "work" });
+      const personalContent = JSON.stringify({ key: "personal" });
+
+      await writeFile(join(ccxSettingsDir, "work.json"), workContent);
+      await writeFile(join(ccxSettingsDir, "personal.json"), personalContent);
+
+      const result = await diff("work", "personal");
+
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("work");
+      expect(result.output).toContain("personal");
+    });
+
+    test("檔案相同時回傳 exitCode 0 且無輸出", async () => {
+      const { diff } = await import("./setting");
+
+      const content = JSON.stringify({ key: "same" });
+
+      await writeFile(join(ccxSettingsDir, "work.json"), content);
+      await writeFile(join(ccxSettingsDir, "personal.json"), content);
+
+      const result = await diff("work", "personal");
+
+      expect(result.exitCode).toBe(0);
+      expect(result.output).toBe("");
+    });
+
+    test("使用 --semantic 時應顯示語意化差異", async () => {
+      const { diff } = await import("./setting");
+
+      const workContent = JSON.stringify({ added: "new", same: "value" });
+      const personalContent = JSON.stringify({ same: "value" });
+
+      await writeFile(join(ccxSettingsDir, "work.json"), workContent);
+      await writeFile(join(ccxSettingsDir, "personal.json"), personalContent);
+
+      const result = await diff("work", "personal", { semantic: true });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.output).toContain("Removed");
+      expect(result.output).toContain("added");
+    });
+
+    test("setting 不存在時應拋出錯誤", async () => {
+      const { diff } = await import("./setting");
+      await expect(diff("nonexist")).rejects.toThrow("Setting 'nonexist' 不存在");
+    });
+
+    test("official 不存在時應拋出錯誤", async () => {
+      const { diff } = await import("./setting");
+      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
+
+      await expect(diff("work")).rejects.toThrow("Claude settings 檔案不存在");
+    });
+  });
 });
