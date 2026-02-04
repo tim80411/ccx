@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { create, list, use, update, path, show, selectSetting } from "./commands/setting";
+import { create, list, use, update, path, show, status, selectSetting } from "./commands/setting";
 
 const program = new Command();
 
@@ -64,20 +64,27 @@ setting
   .action(handleUseAction(use));
 
 setting
-  .command("update <name>")
-  .description("更新指定的 setting（從當前 claude settings 覆蓋）")
+  .command("update [name]")
+  .description("更新 setting（未指定名稱時更新當前 setting，需確認）")
   .action(handleAction(update));
 
 setting
   .command("path")
-  .description("顯示 Claude settings 檔案路徑")
+  .description("顯示當前 setting 路徑")
+  .option("--official", "顯示 Claude 官方設定檔路徑")
   .action(handleAction(path));
 
 setting
   .command("show")
-  .description("顯示當前 Claude settings 內容")
+  .description("顯示當前 setting 內容")
+  .option("--official", "顯示 Claude 官方設定檔內容")
   .option("--raw", "輸出非格式化的 JSON")
   .action(handleAction(show));
+
+setting
+  .command("status")
+  .description("顯示當前使用中的 setting")
+  .action(handleAction(status));
 
 // Top-level aliases for setting commands
 program
@@ -97,19 +104,26 @@ program
   .action(handleUseAction(use));
 
 program
-  .command("update <name>")
-  .description("更新指定的 setting（從當前 claude settings 覆蓋）(alias for setting update)")
+  .command("update [name]")
+  .description("更新 setting（未指定名稱時更新當前 setting，需確認）(alias for setting update)")
   .action(handleAction(update));
 
 program
   .command("path")
-  .description("顯示 Claude settings 檔案路徑 (alias for setting path)")
+  .description("顯示當前 setting 路徑 (alias for setting path)")
+  .option("--official", "顯示 Claude 官方設定檔路徑")
   .action(handleAction(path));
 
 program
   .command("show")
-  .description("顯示當前 Claude settings 內容 (alias for setting show)")
+  .description("顯示當前 setting 內容 (alias for setting show)")
+  .option("--official", "顯示 Claude 官方設定檔內容")
   .option("--raw", "輸出非格式化的 JSON")
   .action(handleAction(show));
+
+program
+  .command("status")
+  .description("顯示當前使用中的 setting (alias for setting status)")
+  .action(handleAction(status));
 
 program.parse();

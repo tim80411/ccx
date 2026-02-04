@@ -61,6 +61,14 @@ ccx setting use <name>
 ccx setting use
 ```
 
+### 查看當前 Setting
+
+顯示目前使用中的 setting 名稱：
+
+```bash
+ccx setting status
+```
+
 ### 更新 Setting
 
 用目前的 Claude Code 設定覆蓋指定的 setting：
@@ -70,17 +78,39 @@ ccx setting update <name>
 # 例如: ccx setting update work
 ```
 
+未指定名稱時，會更新當前使用中的 setting（需確認）：
+
+```bash
+ccx setting update
+```
+
 ### 顯示設定路徑
+
+顯示當前 setting 的檔案路徑：
 
 ```bash
 ccx setting path
 ```
 
-### 顯示當前設定內容
+顯示 Claude 官方設定檔路徑：
+
+```bash
+ccx setting path --official
+```
+
+### 顯示設定內容
+
+顯示當前 setting 的內容：
 
 ```bash
 ccx setting show
 ccx setting show --raw  # 輸出非格式化的 JSON
+```
+
+顯示 Claude 官方設定檔內容：
+
+```bash
+ccx setting show --official
 ```
 
 ## 環境變數
@@ -96,6 +126,7 @@ ccx setting show --raw  # 輸出非格式化的 JSON
 | Claude Code 設定 | `~/.claude/settings.json` |
 | 儲存的 Settings | `~/.config/ccx/settings/<name>.json` |
 | 自動備份 | `~/.config/ccx/settings/previous.json` |
+| 狀態追蹤 | `~/.config/ccx/state.json` |
 
 ## 開發
 
