@@ -113,6 +113,34 @@ Show Claude's official settings content:
 ccx setting show --official
 ```
 
+### Compare Settings
+
+Compare current setting with Claude's official settings:
+
+```bash
+ccx setting diff
+```
+
+Compare a specific setting with Claude's official settings:
+
+```bash
+ccx setting diff <name>
+# e.g. ccx setting diff work
+```
+
+Compare two settings:
+
+```bash
+ccx setting diff <name1> <name2>
+# e.g. ccx setting diff work personal
+```
+
+Use semantic output (grouped by added/removed/modified):
+
+```bash
+ccx setting diff --semantic
+```
+
 ## Environment Variables
 
 | Variable | Description |

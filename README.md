@@ -113,6 +113,34 @@ ccx setting show --raw  # 輸出非格式化的 JSON
 ccx setting show --official
 ```
 
+### 比較設定差異
+
+比較當前 setting 與 Claude 官方設定：
+
+```bash
+ccx setting diff
+```
+
+比較指定 setting 與 Claude 官方設定：
+
+```bash
+ccx setting diff <name>
+# 例如: ccx setting diff work
+```
+
+比較兩個 setting：
+
+```bash
+ccx setting diff <name1> <name2>
+# 例如: ccx setting diff work personal
+```
+
+使用語意化輸出（依 added/removed/modified 分組）：
+
+```bash
+ccx setting diff --semantic
+```
+
 ## 環境變數
 
 | 變數 | 說明 |
