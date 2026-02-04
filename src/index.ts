@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { create, list, use, update, path, show, status, selectSetting } from "./commands/setting";
+import packageJson from "../package.json";
 
 const program = new Command();
 
 program
   .name("ccx")
   .description("Claude Code Context - CLI 工具")
-  .version(process.env.npm_package_version || "0.0.0");
+  .version(packageJson.version);
 
 /**
  * Wrapper for async command actions with consistent error handling
