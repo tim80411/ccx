@@ -61,6 +61,14 @@ When no name is provided, an interactive selection prompt appears:
 ccx setting use
 ```
 
+### Check Current Setting
+
+Display the currently active setting name:
+
+```bash
+ccx setting status
+```
+
 ### Update a Setting
 
 Overwrite a setting with your current Claude Code settings:
@@ -70,17 +78,39 @@ ccx setting update <name>
 # e.g. ccx setting update work
 ```
 
+When no name is provided, updates the current setting (requires confirmation):
+
+```bash
+ccx setting update
+```
+
 ### Show Settings Path
+
+Show the current setting's file path:
 
 ```bash
 ccx setting path
 ```
 
-### Show Current Settings
+Show Claude's official settings file path:
+
+```bash
+ccx setting path --official
+```
+
+### Show Settings Content
+
+Show the current setting's content:
 
 ```bash
 ccx setting show
 ccx setting show --raw  # Output unformatted JSON
+```
+
+Show Claude's official settings content:
+
+```bash
+ccx setting show --official
 ```
 
 ## Environment Variables
@@ -96,6 +126,7 @@ ccx setting show --raw  # Output unformatted JSON
 | Claude Code settings | `~/.claude/settings.json` |
 | Stored settings | `~/.config/ccx/settings/<name>.json` |
 | Auto-backup | `~/.config/ccx/settings/previous.json` |
+| State tracking | `~/.config/ccx/state.json` |
 
 ## Development
 

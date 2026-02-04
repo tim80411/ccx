@@ -8,6 +8,7 @@ import {
 import { ensureDir, copyFile, fileExists, listJsonFiles, readFile } from "../utils/fs";
 import { computeFileHash, saveState, loadState } from "../utils/state";
 import { confirmAction } from "../utils/prompt";
+import { resolveSettingPath, resolveSettingName, SettingTarget } from "../utils/target";
 
 /**
  * 建立新的 setting
@@ -102,57 +103,90 @@ export async function use(name: string, options?: { force?: boolean }): Promise<
 }
 
 /**
- * 更新指定的 setting（從當前 claude settings 覆蓋）
- * @param name setting 名稱
+ * 更新 setting（從當前 claude settings 覆蓋）
+ * @param name setting 名稱（可選，預設為當前 setting）
  * @returns 成功訊息
  */
-export async function update(name: string): Promise<string> {
-  const settingPath = getSettingPath(name);
+export async function update(name?: string): Promise<string> {
+  if (name === "previous") {
+    throw new Error("'previous' 是保留名稱，無法使用");
+  }
+
+  const target: SettingTarget = name
+    ? { type: "named", name }
+    : { type: "current" };
+
+  const targetName = await resolveSettingName(target);
+  if (!targetName) {
+    throw new Error("無法解析目標 setting 名稱");
+  }
+
+  const settingPath = getSettingPath(targetName);
   const claudePath = getClaudeSettingsPath();
 
   if (!(await fileExists(settingPath))) {
-    throw new Error(`Setting '${name}' 不存在`);
+    throw new Error(`Setting '${targetName}' 不存在`);
   }
 
   if (!(await fileExists(claudePath))) {
     throw new Error("Claude settings 檔案不存在");
+  }
+
+  // 若未指定名稱，使用當前 setting 時需確認
+  if (!name) {
+    const shouldContinue = await confirmAction(
+      `確定要用當前 Claude settings 覆蓋 '${targetName}' 嗎？`
+    );
+    if (!shouldContinue) {
+      throw new Error("已取消更新");
+    }
   }
 
   await copyFile(claudePath, settingPath);
 
   const state = await loadState();
-  if (state?.currentSettingName === name) {
+  if (state?.currentSettingName === targetName) {
     const newHash = await computeFileHash(claudePath);
     await saveState({
-      currentSettingName: name,
+      currentSettingName: targetName,
       claudeSettingsHash: newHash,
     });
   }
 
-  return `✓ update: ${name}`;
+  return `✓ update: ${targetName}`;
 }
 
 /**
- * 取得 Claude settings 檔案路徑
+ * 顯示設定檔路徑
+ * @param options.official 是否顯示 Claude 官方路徑（預設顯示當前 setting 路徑）
  * @returns 路徑字串
  */
-export async function path(): Promise<string> {
-  return getClaudeSettingsPath();
+export async function path(options?: { official?: boolean }): Promise<string> {
+  const target: SettingTarget = options?.official
+    ? { type: "official" }
+    : { type: "current" };
+  return await resolveSettingPath(target);
 }
 
 /**
- * 顯示當前 Claude settings 內容
+ * 顯示設定檔內容
+ * @param options.official 是否顯示 Claude 官方內容（預設顯示當前 setting 內容）
  * @param options.raw 是否輸出非格式化的 JSON
  * @returns JSON 字串
  */
-export async function show(options?: { raw?: boolean }): Promise<string> {
-  const claudePath = getClaudeSettingsPath();
+export async function show(options?: { official?: boolean; raw?: boolean }): Promise<string> {
+  const target: SettingTarget = options?.official
+    ? { type: "official" }
+    : { type: "current" };
 
-  if (!(await fileExists(claudePath))) {
-    throw new Error("Claude settings 檔案不存在");
+  const targetPath = await resolveSettingPath(target);
+
+  if (!(await fileExists(targetPath))) {
+    const fileType = options?.official ? "Claude settings" : "Setting";
+    throw new Error(`${fileType} 檔案不存在`);
   }
 
-  const content = await readFile(claudePath);
+  const content = await readFile(targetPath);
   const parsed = JSON.parse(content);
 
   if (options?.raw) {
@@ -160,6 +194,15 @@ export async function show(options?: { raw?: boolean }): Promise<string> {
   }
 
   return JSON.stringify(parsed, null, 2);
+}
+
+/**
+ * 顯示當前使用中的 setting 名稱
+ * @returns 當前 setting 名稱
+ */
+export async function status(): Promise<string> {
+  const name = await resolveSettingName({ type: "current" });
+  return `✓ current: ${name}`;
 }
 
 /**
