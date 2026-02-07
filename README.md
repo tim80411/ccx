@@ -107,6 +107,13 @@ ccx setting show
 ccx setting show --raw  # 輸出非格式化的 JSON
 ```
 
+顯示指定名稱的 setting 內容：
+
+```bash
+ccx setting show --name <name>
+# 例如: ccx setting show --name work
+```
+
 顯示 Claude 官方設定檔內容：
 
 ```bash

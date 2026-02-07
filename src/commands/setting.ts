@@ -179,14 +179,19 @@ export async function path(options?: { official?: boolean }): Promise<string> {
  * @param options.raw 是否輸出非格式化的 JSON
  * @returns JSON 字串
  */
-export async function show(options?: { official?: boolean; raw?: boolean }): Promise<string> {
-  const target: SettingTarget = options?.official
-    ? { type: "official" }
-    : { type: "current" };
+export async function show(options?: { official?: boolean; raw?: boolean; name?: string }): Promise<string> {
+  const target: SettingTarget = options?.name
+    ? { type: "named", name: options.name }
+    : options?.official
+      ? { type: "official" }
+      : { type: "current" };
 
   const targetPath = await resolveSettingPath(target);
 
   if (!(await fileExists(targetPath))) {
+    if (options?.name) {
+      throw new Error(`Setting '${options.name}' 不存在`);
+    }
     const fileType = options?.official ? "Claude settings" : "Setting";
     throw new Error(`${fileType} 檔案不存在`);
   }

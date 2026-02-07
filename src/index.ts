@@ -106,6 +106,7 @@ setting
   .description("顯示當前 setting 內容")
   .option("--official", "顯示 Claude 官方設定檔內容")
   .option("--raw", "輸出非格式化的 JSON")
+  .option("--name <name>", "顯示指定名稱的 setting 內容")
   .action(handleAction(show));
 
 setting
@@ -152,6 +153,7 @@ program
   .description("顯示當前 setting 內容 (alias for setting show)")
   .option("--official", "顯示 Claude 官方設定檔內容")
   .option("--raw", "輸出非格式化的 JSON")
+  .option("--name <name>", "顯示指定名稱的 setting 內容")
   .action(handleAction(show));
 
 program

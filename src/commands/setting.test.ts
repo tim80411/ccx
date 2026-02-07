@@ -384,6 +384,46 @@ describe("setting commands", () => {
       const { show } = await import("./setting");
       await expect(show()).rejects.toThrow("Setting 檔案不存在");
     });
+
+    test("使用 --name 時應回傳指定 setting 的格式化 JSON 內容", async () => {
+      const { show } = await import("./setting");
+      const content = { key: "value", nested: { foo: "bar" } };
+
+      await writeFile(join(ccxSettingsDir, "work.json"), JSON.stringify(content));
+
+      const result = await show({ name: "work" });
+
+      expect(result).toBe(JSON.stringify(content, null, 2));
+    });
+
+    test("使用 --name 且 setting 不存在時應拋出錯誤", async () => {
+      const { show } = await import("./setting");
+      await expect(show({ name: "nonexist" })).rejects.toThrow("Setting 'nonexist' 不存在");
+    });
+
+    test("使用 --name 和 --raw 時應回傳非格式化的 JSON", async () => {
+      const { show } = await import("./setting");
+      const content = { key: "value", nested: { foo: "bar" } };
+
+      await writeFile(join(ccxSettingsDir, "work.json"), JSON.stringify(content));
+
+      const result = await show({ name: "work", raw: true });
+
+      expect(result).toBe(JSON.stringify(content));
+    });
+
+    test("使用 --name 和 --official 時 --name 優先", async () => {
+      const { show } = await import("./setting");
+      const namedContent = { source: "named" };
+      const officialContent = { source: "official" };
+
+      await writeFile(join(ccxSettingsDir, "work.json"), JSON.stringify(namedContent));
+      await writeFile(claudeSettingsPath, JSON.stringify(officialContent));
+
+      const result = await show({ name: "work", official: true });
+
+      expect(result).toBe(JSON.stringify(namedContent, null, 2));
+    });
   });
 
   describe("status()", () => {

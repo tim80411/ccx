@@ -107,6 +107,13 @@ ccx setting show
 ccx setting show --raw  # Output unformatted JSON
 ```
 
+Show a specific named setting's content:
+
+```bash
+ccx setting show --name <name>
+# e.g.: ccx setting show --name work
+```
+
 Show Claude's official settings content:
 
 ```bash
