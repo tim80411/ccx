@@ -329,7 +329,34 @@ describe("setting commands", () => {
   });
 
   describe("show()", () => {
-    test("無狀態時應拋出錯誤", async () => {
+    test("指定名稱時應回傳該 setting 的格式化 JSON 內容", async () => {
+      const { show } = await import("./setting");
+      const content = { key: "value", nested: { foo: "bar" } };
+
+      await writeFile(join(ccxSettingsDir, "work.json"), JSON.stringify(content));
+
+      const result = await show("work");
+
+      expect(result).toBe(JSON.stringify(content, null, 2));
+    });
+
+    test("指定名稱但 setting 不存在時應拋出錯誤", async () => {
+      const { show } = await import("./setting");
+      await expect(show("nonexist")).rejects.toThrow("Setting 'nonexist' 不存在");
+    });
+
+    test("指定名稱時可搭配 raw 選項", async () => {
+      const { show } = await import("./setting");
+      const content = { key: "value" };
+
+      await writeFile(join(ccxSettingsDir, "work.json"), JSON.stringify(content));
+
+      const result = await show("work", { raw: true });
+
+      expect(result).toBe(JSON.stringify(content));
+    });
+
+    test("無名稱且無狀態時應拋出錯誤", async () => {
       const { show } = await import("./setting");
       await expect(show()).rejects.toThrow(
         "目前無追蹤中的 setting，請先使用 'ccx setting use <name>' 切換"
@@ -357,7 +384,7 @@ describe("setting commands", () => {
       await saveState({ currentSettingName: "work", claudeSettingsHash: "abc123" });
 
       const { show } = await import("./setting");
-      const result = await show({ raw: true });
+      const result = await show(undefined, { raw: true });
 
       expect(result).toBe(JSON.stringify(content));
     });
@@ -367,14 +394,14 @@ describe("setting commands", () => {
       const content = { official: true, data: "test" };
       await writeFile(claudeSettingsPath, JSON.stringify(content));
 
-      const result = await show({ official: true });
+      const result = await show(undefined, { official: true });
 
       expect(result).toBe(JSON.stringify(content, null, 2));
     });
 
     test("使用 --official 且檔案不存在時應拋出錯誤", async () => {
       const { show } = await import("./setting");
-      await expect(show({ official: true })).rejects.toThrow("Claude settings 檔案不存在");
+      await expect(show(undefined, { official: true })).rejects.toThrow("Claude settings 檔案不存在");
     });
 
     test("當前 setting 檔案不存在時應拋出錯誤", async () => {

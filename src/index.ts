@@ -46,6 +46,25 @@ function handleUseAction(
 }
 
 /**
+ * Wrapper for show command with interactive selection support
+ */
+function handleShowAction(
+  fn: (name?: string, options?: { official?: boolean; raw?: boolean }) => Promise<string>
+): (name?: string, options?: { official?: boolean; raw?: boolean }) => Promise<void> {
+  return async (name?: string, options?: { official?: boolean; raw?: boolean }) => {
+    try {
+      // 若有 --official 或指定 name，直接使用；否則互動選擇
+      const selectedName = options?.official ? undefined : (name ?? (await selectSetting()));
+      const result = await fn(selectedName, options);
+      console.log(result);
+    } catch (error) {
+      console.error((error as Error).message);
+      process.exit(1);
+    }
+  };
+}
+
+/**
  * Wrapper for diff command with Unix-style exit codes
  * Exit 0: files identical (no output)
  * Exit 1: files differ (output diff)
@@ -102,11 +121,11 @@ setting
   .action(handleAction(path));
 
 setting
-  .command("show")
-  .description("顯示當前 setting 內容")
+  .command("show [name]")
+  .description("顯示 setting 內容（未指定名稱時互動選擇）")
   .option("--official", "顯示 Claude 官方設定檔內容")
   .option("--raw", "輸出非格式化的 JSON")
-  .action(handleAction(show));
+  .action(handleShowAction(show));
 
 setting
   .command("status")
@@ -148,11 +167,11 @@ program
   .action(handleAction(path));
 
 program
-  .command("show")
-  .description("顯示當前 setting 內容 (alias for setting show)")
+  .command("show [name]")
+  .description("顯示 setting 內容（未指定名稱時互動選擇）(alias for setting show)")
   .option("--official", "顯示 Claude 官方設定檔內容")
   .option("--raw", "輸出非格式化的 JSON")
-  .action(handleAction(show));
+  .action(handleShowAction(show));
 
 program
   .command("status")

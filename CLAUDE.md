@@ -81,7 +81,7 @@ State is updated only after `ccx use <name>` command.
 | `ccx update [name]` | Update setting from current Claude config (defaults to current, requires confirmation) |
 | `ccx status` | Show current active setting name |
 | `ccx path [--official]` | Show setting path (default: current, --official: Claude's file) |
-| `ccx show [--official] [--raw]` | Show setting content (default: current, --official: Claude's file) |
+| `ccx show [name] [--official] [--raw]` | Show setting content (interactive if no name, --official: Claude's file) |
 | `ccx diff [name1] [name2]` | Compare settings (no args: current vs official, 1 arg: named vs official, 2 args: named vs named) |
 
 ### Diff Command Details

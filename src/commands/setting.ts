@@ -175,20 +175,32 @@ export async function path(options?: { official?: boolean }): Promise<string> {
 
 /**
  * 顯示設定檔內容
+ * @param name setting 名稱（可選）
  * @param options.official 是否顯示 Claude 官方內容（預設顯示當前 setting 內容）
  * @param options.raw 是否輸出非格式化的 JSON
  * @returns JSON 字串
  */
-export async function show(options?: { official?: boolean; raw?: boolean }): Promise<string> {
-  const target: SettingTarget = options?.official
-    ? { type: "official" }
-    : { type: "current" };
+export async function show(name?: string, options?: { official?: boolean; raw?: boolean }): Promise<string> {
+  // 決定目標：--official > name > current
+  let target: SettingTarget;
+  if (options?.official) {
+    target = { type: "official" };
+  } else if (name) {
+    target = { type: "named", name };
+  } else {
+    target = { type: "current" };
+  }
 
   const targetPath = await resolveSettingPath(target);
 
   if (!(await fileExists(targetPath))) {
-    const fileType = options?.official ? "Claude settings" : "Setting";
-    throw new Error(`${fileType} 檔案不存在`);
+    if (options?.official) {
+      throw new Error("Claude settings 檔案不存在");
+    } else if (name) {
+      throw new Error(`Setting '${name}' 不存在`);
+    } else {
+      throw new Error("Setting 檔案不存在");
+    }
   }
 
   const content = await readFile(targetPath);

@@ -100,11 +100,18 @@ ccx setting path --official
 
 ### 顯示設定內容
 
-顯示當前 setting 的內容：
+顯示指定 setting 的內容：
+
+```bash
+ccx setting show <name>
+# 例如: ccx setting show work
+ccx setting show work --raw  # 輸出非格式化的 JSON
+```
+
+未指定名稱時，會進入互動選擇模式：
 
 ```bash
 ccx setting show
-ccx setting show --raw  # 輸出非格式化的 JSON
 ```
 
 顯示 Claude 官方設定檔內容：
