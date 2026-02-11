@@ -42,14 +42,16 @@ Follow TDD (Test-Driven Development):
 src/
 ├── index.ts              # CLI entry point (Commander setup)
 ├── commands/
-│   └── setting.ts        # Setting subcommand logic (create/list/use/update/status/path/show/diff)
+│   ├── setting.ts        # Setting subcommand logic (create/list/use/update/status/path/show/diff)
+│   └── config.ts         # Config commands (set/unset) for modifying official settings.json
 ├── utils/
 │   ├── paths.ts          # Path constants and helpers
 │   ├── fs.ts             # File system operations
 │   ├── state.ts          # State management (current setting tracking)
 │   ├── target.ts         # Setting target resolution (current/named/official)
 │   ├── prompt.ts         # User confirmation prompts
-│   └── diff.ts           # Diff utilities (unified and semantic diff generation)
+│   ├── diff.ts           # Diff utilities (unified and semantic diff generation)
+│   └── dotpath.ts        # Dot-path utilities (get/set/delete/flatten for nested objects)
 └── types.ts              # TypeScript type definitions
 ```
 
@@ -83,6 +85,7 @@ State is updated only after `ccx use <name>` command.
 | `ccx path [--official]` | Show setting path (default: current, --official: Claude's file) |
 | `ccx show [name] [--official] [--raw]` | Show setting content (interactive if no name, --official: Claude's file) |
 | `ccx diff [name1] [name2]` | Compare settings (no args: current vs official, 1 arg: named vs official, 2 args: named vs named) |
+| `ccx set <entries...> [--approve]` | Set key-value in official settings.json (dot-path, e.g. `env.KEY=val`) |
 
 ### Diff Command Details
 

@@ -113,6 +113,19 @@ Show Claude's official settings content:
 ccx setting show --official
 ```
 
+### Set Key-Value
+
+Directly set key-value pairs in Claude's official `settings.json` using dot-path notation:
+
+```bash
+ccx set env.MY_KEY=myvalue
+ccx set env.A=1 env.B=2          # Set multiple at once
+ccx set enabledPlugins.foo=true   # Auto-infers boolean values
+ccx set model=sonnet --approve    # Skip overwrite confirmation
+```
+
+If a key already exists, you'll be prompted to confirm overwrite (showing current value). Use `--approve` to skip all confirmations.
+
 ### Compare Settings
 
 Compare current setting with Claude's official settings:

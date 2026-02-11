@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { create, list, use, update, path, show, status, selectSetting, diff } from "./commands/setting";
+import { set } from "./commands/config";
 import packageJson from "../package.json";
 
 const program = new Command();
@@ -183,5 +184,16 @@ program
   .description("比較設定檔差異 (alias for setting diff)")
   .option("--semantic", "顯示語意化差異（按 JSON key 分組）")
   .action(handleDiffAction(diff));
+
+// Top-level config commands (operate on official ~/.claude/settings.json)
+program
+  .command("set <entries...>")
+  .description("設定 Claude settings.json 中的 key-value（dot-path 格式）")
+  .option("--approve", "跳過所有確認提示")
+  .action((entries: string[], options: { approve?: boolean }) => {
+    return handleAction(
+      async () => await set(entries, options)
+    )();
+  });
 
 program.parse();

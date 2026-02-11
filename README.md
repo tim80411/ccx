@@ -120,6 +120,19 @@ ccx setting show
 ccx setting show --official
 ```
 
+### 設定 Key-Value
+
+直接設定 Claude 官方 `settings.json` 中的 key-value（使用 dot-path 格式）：
+
+```bash
+ccx set env.MY_KEY=myvalue
+ccx set env.A=1 env.B=2          # 一次設定多筆
+ccx set enabledPlugins.foo=true   # 自動推斷布林值
+ccx set model=sonnet --approve    # 跳過覆蓋確認
+```
+
+若 key 已存在，會提示是否覆蓋（顯示目前值）。使用 `--approve` 跳過所有確認。
+
 ### 比較設定差異
 
 比較當前 setting 與 Claude 官方設定：
