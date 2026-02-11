@@ -107,3 +107,19 @@ Options:
 - Error messages in Chinese, referencing full command path (e.g., `'ccx setting use <name>'`)
 - **Documentation**: After completing features/changes, always update both `README.md` and `CLAUDE.md`
 
+## Release Process
+
+使用 [Semantic Versioning](https://semver.org/)（`MAJOR.MINOR.PATCH`）：
+- **PATCH**: bug fix
+- **MINOR**: new feature（向下相容）
+- **MAJOR**: breaking change
+
+步驟：
+
+1. 確認所有測試通過：`bun test`
+2. 更新 `package.json` 中的 `version`
+3. Commit version bump：`git commit -m "chore: bump version to vX.Y.Z"`
+4. 推送：`git push origin main`
+5. 建立 release（自動建立 tag）：`gh release create vX.Y.Z --title "vX.Y.Z" --notes "..."`
+6. CI 會自動上傳 build artifacts 到該 release
+
