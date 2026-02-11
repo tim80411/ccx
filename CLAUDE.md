@@ -86,6 +86,7 @@ State is updated only after `ccx use <name>` command.
 | `ccx show [name] [--official] [--raw]` | Show setting content (interactive if no name, --official: Claude's file) |
 | `ccx diff [name1] [name2]` | Compare settings (no args: current vs official, 1 arg: named vs official, 2 args: named vs named) |
 | `ccx set <entries...> [--approve]` | Set key-value in official settings.json (dot-path, e.g. `env.KEY=val`) |
+| `ccx unset [key]` | Delete key from official settings.json (interactive if no key) |
 
 ### Diff Command Details
 

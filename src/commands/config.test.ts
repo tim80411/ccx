@@ -171,4 +171,66 @@ describe("config commands", () => {
       expect(content.env.B).toBe(2);
     });
   });
+
+  describe("unset()", () => {
+    test("刪除 top-level key", async () => {
+      const { unset } = await import("./config");
+      await writeFile(claudeSettingsPath, JSON.stringify({ model: "opus", env: {} }));
+
+      const result = await unset("model");
+
+      expect(result).toBe("✓ unset: model");
+      const content = JSON.parse(await readFile(claudeSettingsPath, "utf-8"));
+      expect(content.model).toBeUndefined();
+      expect(content.env).toEqual({});
+    });
+
+    test("刪除 nested key", async () => {
+      const { unset } = await import("./config");
+      await writeFile(claudeSettingsPath, JSON.stringify({ env: { A: "1", B: "2" } }));
+
+      const result = await unset("env.A");
+
+      expect(result).toBe("✓ unset: env.A");
+      const content = JSON.parse(await readFile(claudeSettingsPath, "utf-8"));
+      expect(content.env.A).toBeUndefined();
+      expect(content.env.B).toBe("2");
+    });
+
+    test("key 不存在時應拋出錯誤", async () => {
+      const { unset } = await import("./config");
+      await writeFile(claudeSettingsPath, JSON.stringify({ model: "opus" }));
+
+      await expect(unset("nonexist")).rejects.toThrow("'nonexist' 不存在於 settings 中");
+    });
+
+    test("Claude settings 不存在時應拋出錯誤", async () => {
+      const { unset } = await import("./config");
+      await rm(claudeSettingsPath, { force: true });
+
+      await expect(unset("model")).rejects.toThrow("Claude settings 檔案不存在");
+    });
+
+    test("無參數時互動選擇", async () => {
+      mock.module("@inquirer/select", () => ({
+        default: async () => "model",
+      }));
+
+      const { unset } = await import("./config");
+      await writeFile(claudeSettingsPath, JSON.stringify({ model: "opus", env: { A: "1" } }));
+
+      const result = await unset();
+
+      expect(result).toBe("✓ unset: model");
+      const content = JSON.parse(await readFile(claudeSettingsPath, "utf-8"));
+      expect(content.model).toBeUndefined();
+    });
+
+    test("無參數且 settings 為空時應拋出錯誤", async () => {
+      const { unset } = await import("./config");
+      await writeFile(claudeSettingsPath, JSON.stringify({}));
+
+      await expect(unset()).rejects.toThrow("settings 中沒有可刪除的 key");
+    });
+  });
 });

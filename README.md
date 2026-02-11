@@ -133,6 +133,15 @@ ccx set model=sonnet --approve    # 跳過覆蓋確認
 
 若 key 已存在，會提示是否覆蓋（顯示目前值）。使用 `--approve` 跳過所有確認。
 
+### 刪除 Key
+
+刪除 Claude 官方 `settings.json` 中的 key（使用 dot-path 格式）：
+
+```bash
+ccx unset env.MY_KEY              # 精確刪除
+ccx unset                          # 互動選擇要刪除的 key
+```
+
 ### 比較設定差異
 
 比較當前 setting 與 Claude 官方設定：

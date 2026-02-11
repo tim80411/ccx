@@ -126,6 +126,15 @@ ccx set model=sonnet --approve    # Skip overwrite confirmation
 
 If a key already exists, you'll be prompted to confirm overwrite (showing current value). Use `--approve` to skip all confirmations.
 
+### Delete Key
+
+Delete a key from Claude's official `settings.json` using dot-path notation:
+
+```bash
+ccx unset env.MY_KEY              # Delete by exact path
+ccx unset                          # Interactive selection
+```
+
 ### Compare Settings
 
 Compare current setting with Claude's official settings:

@@ -1,8 +1,9 @@
 import { writeFile } from "fs/promises";
 import { getClaudeSettingsPath } from "../utils/paths";
 import { fileExists, readFile } from "../utils/fs";
-import { getByPath, setByPath } from "../utils/dotpath";
+import { getByPath, setByPath, deleteByPath, flattenKeys } from "../utils/dotpath";
 import { confirmAction } from "../utils/prompt";
+import select from "@inquirer/select";
 
 /**
  * 解析值的型別（布林、數字、字串）
@@ -83,4 +84,46 @@ export async function set(
   await writeFile(claudePath, JSON.stringify(obj, null, 2), "utf-8");
 
   return results.join("\n");
+}
+
+/**
+ * 刪除 Claude settings.json 中的 key
+ * @param key dot-path（可選，未指定時互動選擇）
+ * @returns 成功訊息
+ */
+export async function unset(key?: string): Promise<string> {
+  const claudePath = getClaudeSettingsPath();
+  if (!(await fileExists(claudePath))) {
+    throw new Error("Claude settings 檔案不存在");
+  }
+
+  const content = await readFile(claudePath);
+  const obj = JSON.parse(content) as Record<string, unknown>;
+
+  const targetKey = key ?? (await selectKey(obj));
+
+  if (getByPath(obj, targetKey) === undefined) {
+    throw new Error(`'${targetKey}' 不存在於 settings 中`);
+  }
+
+  const result = deleteByPath(obj, targetKey);
+  await writeFile(claudePath, JSON.stringify(result, null, 2), "utf-8");
+
+  return `✓ unset: ${targetKey}`;
+}
+
+/**
+ * 互動式選擇要刪除的 key
+ */
+async function selectKey(obj: Record<string, unknown>): Promise<string> {
+  const keys = flattenKeys(obj);
+
+  if (keys.length === 0) {
+    throw new Error("settings 中沒有可刪除的 key");
+  }
+
+  return await select({
+    message: "選擇要刪除的 key",
+    choices: keys.map((k) => ({ name: k, value: k })),
+  });
 }

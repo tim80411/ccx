@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { create, list, use, update, path, show, status, selectSetting, diff } from "./commands/setting";
-import { set } from "./commands/config";
+import { set, unset } from "./commands/config";
 import packageJson from "../package.json";
 
 const program = new Command();
@@ -195,5 +195,10 @@ program
       async () => await set(entries, options)
     )();
   });
+
+program
+  .command("unset [key]")
+  .description("刪除 Claude settings.json 中的 key（未指定時互動選擇）")
+  .action(handleAction(unset));
 
 program.parse();
