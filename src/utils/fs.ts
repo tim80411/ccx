@@ -1,4 +1,4 @@
-import { mkdir, copyFile as fsCopyFile, readdir, access, readFile as fsReadFile } from "fs/promises";
+import { mkdir, copyFile as fsCopyFile, readdir, access, readFile as fsReadFile, symlink as fsSymlink, lstat, readlink as fsReadlink, unlink } from "fs/promises";
 import { join, basename } from "path";
 
 /**
@@ -55,4 +55,44 @@ export async function listJsonFiles(dir: string): Promise<string[]> {
  */
 export async function readFile(path: string): Promise<string> {
   return await fsReadFile(path, "utf-8");
+}
+
+/**
+ * 建立符號連結
+ * @param target 目標檔案路徑（實際內容位置）
+ * @param linkPath 連結路徑（將會指向 target）
+ */
+export async function createSymlink(target: string, linkPath: string): Promise<void> {
+  await fsSymlink(target, linkPath);
+}
+
+/**
+ * 檢查路徑是否為符號連結
+ * @param path 路徑
+ * @returns 是符號連結則回傳 true
+ */
+export async function isSymlink(path: string): Promise<boolean> {
+  try {
+    const stats = await lstat(path);
+    return stats.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 讀取符號連結指向的目標路徑
+ * @param path 連結路徑
+ * @returns 目標路徑字串
+ */
+export async function readSymlink(path: string): Promise<string> {
+  return await fsReadlink(path);
+}
+
+/**
+ * 刪除檔案或符號連結
+ * @param path 路徑
+ */
+export async function removeFile(path: string): Promise<void> {
+  await unlink(path);
 }

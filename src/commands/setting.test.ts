@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach, mock } from "bun:test";
-import { mkdtemp, rm, writeFile, mkdir } from "fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, lstat, readlink, symlink } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -77,6 +77,31 @@ describe("setting commands", () => {
       await expect(create("work")).rejects.toThrow("Claude settings 檔案不存在");
     });
 
+    test("來源是損壞的符號連結時應拋出明確錯誤", async () => {
+      const { create } = await import("./setting");
+      const deletedTarget = join(ccxSettingsDir, "deleted.json");
+      await writeFile(deletedTarget, "{}");
+      await symlink(deletedTarget, claudeSettingsPath);
+      await rm(deletedTarget);
+
+      await expect(create("work")).rejects.toThrow("符號連結已損壞");
+    });
+
+    test("來源是符號連結時應複製實際內容", async () => {
+      const { create } = await import("./setting");
+      const personalContent = JSON.stringify({ personal: true });
+
+      // 建立一個已存在的 setting 並建立符號連結
+      await writeFile(join(ccxSettingsDir, "personal.json"), personalContent);
+      await symlink(join(ccxSettingsDir, "personal.json"), claudeSettingsPath);
+
+      const result = await create("work");
+
+      expect(result).toBe("✓ create: work");
+      const workContent = await Bun.file(join(ccxSettingsDir, "work.json")).text();
+      expect(workContent).toBe(personalContent);
+    });
+
     test("正常情況應複製檔案並回傳成功訊息", async () => {
       const { create } = await import("./setting");
       const content = JSON.stringify({ test: "data" });
@@ -129,7 +154,7 @@ describe("setting commands", () => {
       expect(previousContent).toBe(currentContent);
     });
 
-    test("正常情況應複製指定 setting 到 claude settings", async () => {
+    test("正常情況應建立符號連結指向目標 setting", async () => {
       const { use } = await import("./setting");
       const currentContent = JSON.stringify({ current: true });
       const workContent = JSON.stringify({ work: true });
@@ -140,8 +165,28 @@ describe("setting commands", () => {
       const result = await use("work");
 
       expect(result).toBe("✓ use: work");
+      // 驗證是符號連結
+      const stats = await lstat(claudeSettingsPath);
+      expect(stats.isSymbolicLink()).toBe(true);
+      // 驗證連結指向正確目標
+      const target = await readlink(claudeSettingsPath);
+      expect(target).toBe(join(ccxSettingsDir, "work.json"));
+      // 透過連結讀取應得到目標內容
       const newContent = await Bun.file(claudeSettingsPath).text();
       expect(newContent).toBe(workContent);
+    });
+
+    test("應建立 .bak 備份檔", async () => {
+      const { use } = await import("./setting");
+      const workContent = JSON.stringify({ work: true });
+
+      await writeFile(claudeSettingsPath, "{}");
+      await writeFile(join(ccxSettingsDir, "work.json"), workContent);
+
+      await use("work");
+
+      const bakContent = await Bun.file(join(ccxSettingsDir, "work.json.bak")).text();
+      expect(bakContent).toBe(workContent);
     });
 
     test("切換後應儲存狀態", async () => {
@@ -161,22 +206,19 @@ describe("setting commands", () => {
       expect(state?.claudeSettingsHash).toBeDefined();
     });
 
-    test("設定未修改時不應提示確認", async () => {
+    test("已經是當前 setting 時應回傳已在使用中訊息", async () => {
       const { use } = await import("./setting");
       const { saveState, computeFileHash } = await import("../utils/state");
-      const currentContent = JSON.stringify({ current: true });
       const workContent = JSON.stringify({ work: true });
 
-      await writeFile(claudeSettingsPath, currentContent);
       await writeFile(join(ccxSettingsDir, "work.json"), workContent);
-
-      // 設定狀態為當前內容的 hash（模擬上次切換後的狀態）
+      // 建立符號連結
+      await symlink(join(ccxSettingsDir, "work.json"), claudeSettingsPath);
       const hash = await computeFileHash(claudeSettingsPath);
-      await saveState({ currentSettingName: "current", claudeSettingsHash: hash });
+      await saveState({ currentSettingName: "work", claudeSettingsHash: hash });
 
-      // 不應該需要確認，應直接切換成功
       const result = await use("work");
-      expect(result).toBe("✓ use: work");
+      expect(result).toContain("已在使用中");
     });
 
     test("使用 --force 時應跳過修改檢查", async () => {
@@ -201,105 +243,68 @@ describe("setting commands", () => {
       await writeFile(join(ccxSettingsDir, "previous.json"), "{}");
       await expect(use("previous")).rejects.toThrow("'previous' 是保留名稱，無法使用");
     });
-  });
 
-  describe("update()", () => {
-    test("指定名稱但 setting 不存在時應拋出錯誤", async () => {
-      const { update } = await import("./setting");
+    test("從一般檔案切換時應先移除一般檔案再建立連結（遷移）", async () => {
+      const { use } = await import("./setting");
+      const workContent = JSON.stringify({ work: true });
+
+      // 一般檔案（舊版 CCX）
+      await writeFile(claudeSettingsPath, JSON.stringify({ old: true }));
+      await writeFile(join(ccxSettingsDir, "work.json"), workContent);
+
+      await use("work");
+
+      // 驗證是符號連結
+      const stats = await lstat(claudeSettingsPath);
+      expect(stats.isSymbolicLink()).toBe(true);
+    });
+
+    test("損壞的符號連結也應能正常切換", async () => {
+      const { use } = await import("./setting");
+      const workContent = JSON.stringify({ work: true });
+
+      // 建立損壞的連結
+      const deletedTarget = join(ccxSettingsDir, "deleted.json");
+      await writeFile(deletedTarget, "{}");
+      await symlink(deletedTarget, claudeSettingsPath);
+      await rm(deletedTarget); // 損壞連結
+
+      await writeFile(join(ccxSettingsDir, "work.json"), workContent);
+
+      const result = await use("work", { force: true });
+      expect(result).toBe("✓ use: work");
+
+      // 驗證新連結正確
+      const stats = await lstat(claudeSettingsPath);
+      expect(stats.isSymbolicLink()).toBe(true);
+      const target = await readlink(claudeSettingsPath);
+      expect(target).toBe(join(ccxSettingsDir, "work.json"));
+    });
+
+    test("從一個 setting 切換到另一個 setting", async () => {
+      const { use } = await import("./setting");
+      const workContent = JSON.stringify({ work: true });
+      const personalContent = JSON.stringify({ personal: true });
+
+      await writeFile(join(ccxSettingsDir, "work.json"), workContent);
+      await writeFile(join(ccxSettingsDir, "personal.json"), personalContent);
       await writeFile(claudeSettingsPath, "{}");
-      await expect(update("nonexist")).rejects.toThrow("Setting 'nonexist' 不存在");
-    });
 
-    test("來源檔案不存在時應拋出錯誤", async () => {
-      const { update } = await import("./setting");
-      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
-      await expect(update("work")).rejects.toThrow("Claude settings 檔案不存在");
-    });
+      // 先切換到 work
+      await use("work");
+      expect((await lstat(claudeSettingsPath)).isSymbolicLink()).toBe(true);
 
-    test("指定名稱時應覆蓋指定 setting（無需確認）", async () => {
-      const { update } = await import("./setting");
-      const newContent = JSON.stringify({ updated: true });
-      await writeFile(claudeSettingsPath, newContent);
-      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
+      // 再切換到 personal
+      const result = await use("personal");
+      expect(result).toBe("✓ use: personal");
 
-      const result = await update("work");
+      // 驗證連結已更新
+      const target = await readlink(claudeSettingsPath);
+      expect(target).toBe(join(ccxSettingsDir, "personal.json"));
 
-      expect(result).toBe("✓ update: work");
-      const savedContent = await Bun.file(join(ccxSettingsDir, "work.json")).text();
-      expect(savedContent).toBe(newContent);
-    });
-
-    test("更新當前使用中的 setting 時應同步更新狀態", async () => {
-      const { update } = await import("./setting");
-      const { saveState, loadState, computeFileHash } = await import("../utils/state");
-
-      const originalContent = JSON.stringify({ original: true });
-      await writeFile(claudeSettingsPath, originalContent);
-      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
-
-      // 設定當前使用的是 work setting
-      const originalHash = await computeFileHash(claudeSettingsPath);
-      await saveState({ currentSettingName: "work", claudeSettingsHash: originalHash });
-
-      // 修改 settings.json 並執行 update
-      const modifiedContent = JSON.stringify({ modified: true });
-      await writeFile(claudeSettingsPath, modifiedContent);
-      await update("work");
-
-      // 狀態應該已更新為新的 hash
-      const state = await loadState();
-      expect(state?.currentSettingName).toBe("work");
-      expect(state?.claudeSettingsHash).not.toBe("old-hash");
-    });
-
-    test("無名稱且無狀態時應拋出錯誤", async () => {
-      const { update } = await import("./setting");
-      await expect(update()).rejects.toThrow(
-        "目前無追蹤中的 setting，請先使用 'ccx setting use <name>' 切換"
-      );
-    });
-
-    test("名稱為 'previous' 時應拋出錯誤", async () => {
-      const { update } = await import("./setting");
-      await writeFile(claudeSettingsPath, "{}");
-      await expect(update("previous")).rejects.toThrow(
-        "'previous' 是保留名稱，無法使用"
-      );
-    });
-
-    test("無名稱時應使用當前 setting 並需確認", async () => {
-      // Mock @inquirer/confirm to return true
-      mock.module("@inquirer/confirm", () => ({
-        default: async () => true,
-      }));
-
-      const { saveState } = await import("../utils/state");
-      const newContent = JSON.stringify({ updated: true });
-      await writeFile(claudeSettingsPath, newContent);
-      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
-      await saveState({ currentSettingName: "work", claudeSettingsHash: "abc123" });
-
-      const { update } = await import("./setting");
-      const result = await update();
-
-      expect(result).toBe("✓ update: work");
-      const savedContent = await Bun.file(join(ccxSettingsDir, "work.json")).text();
-      expect(savedContent).toBe(newContent);
-    });
-
-    test("無名稱時使用者取消確認應拋出錯誤", async () => {
-      // Mock @inquirer/confirm to return false
-      mock.module("@inquirer/confirm", () => ({
-        default: async () => false,
-      }));
-
-      const { saveState } = await import("../utils/state");
-      await writeFile(claudeSettingsPath, "{}");
-      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
-      await saveState({ currentSettingName: "work", claudeSettingsHash: "abc123" });
-
-      const { update } = await import("./setting");
-      await expect(update()).rejects.toThrow("已取消更新");
+      // 驗證 previous.json 備份了 work 的內容
+      const previousContent = await Bun.file(join(ccxSettingsDir, "previous.json")).text();
+      expect(previousContent).toBe(workContent);
     });
   });
 
@@ -457,47 +462,6 @@ describe("setting commands", () => {
   });
 
   describe("diff()", () => {
-    test("無參數時比對 current vs official", async () => {
-      const { diff } = await import("./setting");
-      const { saveState } = await import("../utils/state");
-
-      const currentContent = JSON.stringify({ key: "current" });
-      const officialContent = JSON.stringify({ key: "official" });
-
-      await writeFile(join(ccxSettingsDir, "work.json"), currentContent);
-      await writeFile(claudeSettingsPath, officialContent);
-      await saveState({ currentSettingName: "work", claudeSettingsHash: "abc" });
-
-      const result = await diff();
-
-      expect(result.exitCode).toBe(1);
-      expect(result.output).toContain("current");
-      expect(result.output).toContain("official");
-    });
-
-    test("無狀態時應拋出錯誤", async () => {
-      const { diff } = await import("./setting");
-      await expect(diff()).rejects.toThrow(
-        "目前無追蹤中的 setting，請先使用 'ccx setting use <name>' 切換"
-      );
-    });
-
-    test("一個參數時比對 named vs official", async () => {
-      const { diff } = await import("./setting");
-
-      const namedContent = JSON.stringify({ key: "named" });
-      const officialContent = JSON.stringify({ key: "official" });
-
-      await writeFile(join(ccxSettingsDir, "work.json"), namedContent);
-      await writeFile(claudeSettingsPath, officialContent);
-
-      const result = await diff("work");
-
-      expect(result.exitCode).toBe(1);
-      expect(result.output).toContain("named");
-      expect(result.output).toContain("official");
-    });
-
     test("兩個參數時比對兩個 named settings", async () => {
       const { diff } = await import("./setting");
 
@@ -544,16 +508,16 @@ describe("setting commands", () => {
       expect(result.output).toContain("added");
     });
 
-    test("setting 不存在時應拋出錯誤", async () => {
+    test("第一個 setting 不存在時應拋出錯誤", async () => {
       const { diff } = await import("./setting");
-      await expect(diff("nonexist")).rejects.toThrow("Setting 'nonexist' 不存在");
+      await writeFile(join(ccxSettingsDir, "personal.json"), "{}");
+      await expect(diff("nonexist", "personal")).rejects.toThrow("Setting 'nonexist' 不存在");
     });
 
-    test("official 不存在時應拋出錯誤", async () => {
+    test("第二個 setting 不存在時應拋出錯誤", async () => {
       const { diff } = await import("./setting");
       await writeFile(join(ccxSettingsDir, "work.json"), "{}");
-
-      await expect(diff("work")).rejects.toThrow("Claude settings 檔案不存在");
+      await expect(diff("work", "nonexist")).rejects.toThrow("Setting 'nonexist' 不存在");
     });
   });
 });

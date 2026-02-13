@@ -1,8 +1,8 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, writeFile, mkdir } from "fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, symlink, lstat } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { ensureDir, copyFile, fileExists, listJsonFiles, readFile } from "./fs";
+import { ensureDir, copyFile, fileExists, listJsonFiles, readFile, createSymlink, isSymlink, readSymlink, removeFile } from "./fs";
 
 describe("fs", () => {
   let tempDir: string;
@@ -114,6 +114,105 @@ describe("fs", () => {
     test("檔案不存在時應拋出錯誤", async () => {
       const filePath = join(tempDir, "not-exists.json");
       await expect(readFile(filePath)).rejects.toThrow();
+    });
+  });
+
+  describe("createSymlink", () => {
+    test("應建立指向目標的符號連結", async () => {
+      const target = join(tempDir, "target.json");
+      const linkPath = join(tempDir, "link.json");
+      await writeFile(target, '{"key":"value"}');
+
+      await createSymlink(target, linkPath);
+
+      const stats = await lstat(linkPath);
+      expect(stats.isSymbolicLink()).toBe(true);
+      // 透過連結讀取應得到目標內容
+      const content = await readFile(linkPath);
+      expect(content).toBe('{"key":"value"}');
+    });
+  });
+
+  describe("isSymlink", () => {
+    test("符號連結應回傳 true", async () => {
+      const target = join(tempDir, "target.json");
+      const linkPath = join(tempDir, "link.json");
+      await writeFile(target, "{}");
+      await symlink(target, linkPath);
+
+      expect(await isSymlink(linkPath)).toBe(true);
+    });
+
+    test("一般檔案應回傳 false", async () => {
+      const filePath = join(tempDir, "regular.json");
+      await writeFile(filePath, "{}");
+
+      expect(await isSymlink(filePath)).toBe(false);
+    });
+
+    test("路徑不存在應回傳 false", async () => {
+      const filePath = join(tempDir, "not-exists.json");
+      expect(await isSymlink(filePath)).toBe(false);
+    });
+
+    test("損壞的符號連結應回傳 true", async () => {
+      const target = join(tempDir, "deleted.json");
+      const linkPath = join(tempDir, "broken-link.json");
+      await writeFile(target, "{}");
+      await symlink(target, linkPath);
+      await rm(target); // 刪除目標，造成損壞連結
+
+      expect(await isSymlink(linkPath)).toBe(true);
+    });
+  });
+
+  describe("readSymlink", () => {
+    test("應回傳符號連結指向的目標路徑", async () => {
+      const target = join(tempDir, "target.json");
+      const linkPath = join(tempDir, "link.json");
+      await writeFile(target, "{}");
+      await symlink(target, linkPath);
+
+      const result = await readSymlink(linkPath);
+      expect(result).toBe(target);
+    });
+  });
+
+  describe("removeFile", () => {
+    test("應刪除一般檔案", async () => {
+      const filePath = join(tempDir, "file.json");
+      await writeFile(filePath, "{}");
+
+      await removeFile(filePath);
+
+      expect(await fileExists(filePath)).toBe(false);
+    });
+
+    test("應刪除符號連結但不影響目標檔案", async () => {
+      const target = join(tempDir, "target.json");
+      const linkPath = join(tempDir, "link.json");
+      await writeFile(target, '{"data":true}');
+      await symlink(target, linkPath);
+
+      await removeFile(linkPath);
+
+      expect(await fileExists(linkPath)).toBe(false);
+      // 目標檔案應仍存在
+      expect(await fileExists(target)).toBe(true);
+      const content = await readFile(target);
+      expect(content).toBe('{"data":true}');
+    });
+
+    test("應能刪除損壞的符號連結", async () => {
+      const target = join(tempDir, "deleted.json");
+      const linkPath = join(tempDir, "broken-link.json");
+      await writeFile(target, "{}");
+      await symlink(target, linkPath);
+      await rm(target); // 損壞連結
+
+      await removeFile(linkPath);
+
+      expect(await isSymlink(linkPath)).toBe(false);
     });
   });
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { create, list, use, update, path, show, status, selectSetting, diff } from "./commands/setting";
+import { create, list, use, path, show, status, selectSetting, diff } from "./commands/setting";
 import { set, unset } from "./commands/config";
 import packageJson from "../package.json";
 
@@ -72,11 +72,11 @@ function handleShowAction(
  * Exit 2: error occurred
  */
 function handleDiffAction(
-  fn: (arg1?: string, arg2?: string, options?: { semantic?: boolean }) => Promise<{ output: string; exitCode: number }>
-): (arg1?: string, arg2?: string, options?: { semantic?: boolean }) => Promise<void> {
-  return async (arg1?: string, arg2?: string, options?: { semantic?: boolean }) => {
+  fn: (name1: string, name2: string, options?: { semantic?: boolean }) => Promise<{ output: string; exitCode: number }>
+): (name1: string, name2: string, options?: { semantic?: boolean }) => Promise<void> {
+  return async (name1: string, name2: string, options?: { semantic?: boolean }) => {
     try {
-      const { output, exitCode } = await fn(arg1, arg2, options);
+      const { output, exitCode } = await fn(name1, name2, options);
       if (output) {
         console.log(output);
       }
@@ -111,11 +111,6 @@ setting
   .action(handleUseAction(use));
 
 setting
-  .command("update [name]")
-  .description("更新 setting（未指定名稱時更新當前 setting，需確認）")
-  .action(handleAction(update));
-
-setting
   .command("path")
   .description("顯示當前 setting 路徑")
   .option("--official", "顯示 Claude 官方設定檔路徑")
@@ -134,8 +129,8 @@ setting
   .action(handleAction(status));
 
 setting
-  .command("diff [arg1] [arg2]")
-  .description("比較設定檔差異")
+  .command("diff <name1> <name2>")
+  .description("比較兩個 settings 的差異")
   .option("--semantic", "顯示語意化差異（按 JSON key 分組）")
   .action(handleDiffAction(diff));
 
@@ -157,11 +152,6 @@ program
   .action(handleUseAction(use));
 
 program
-  .command("update [name]")
-  .description("更新 setting（未指定名稱時更新當前 setting，需確認）(alias for setting update)")
-  .action(handleAction(update));
-
-program
   .command("path")
   .description("顯示當前 setting 路徑 (alias for setting path)")
   .option("--official", "顯示 Claude 官方設定檔路徑")
@@ -180,8 +170,8 @@ program
   .action(handleAction(status));
 
 program
-  .command("diff [arg1] [arg2]")
-  .description("比較設定檔差異 (alias for setting diff)")
+  .command("diff <name1> <name2>")
+  .description("比較兩個 settings 的差異 (alias for setting diff)")
   .option("--semantic", "顯示語意化差異（按 JSON key 分組）")
   .action(handleDiffAction(diff));
 

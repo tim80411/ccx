@@ -4,6 +4,8 @@
 
 A CLI tool for managing multiple Claude Code settings. Quickly switch between different `~/.claude/settings.json` configurations for different contexts (work, personal, projects).
 
+Uses symlinks so that `~/.claude/settings.json` points directly to the stored setting file — edits in either location affect both.
+
 ## Installation
 
 ### Homebrew (Recommended)
@@ -48,7 +50,7 @@ ccx setting list
 
 ### Switch Setting
 
-Switch to a specific setting (automatically backs up current settings as `previous`):
+Switch to a specific setting via symlink (automatically backs up current settings as `previous`):
 
 ```bash
 ccx setting use <name>
@@ -67,21 +69,6 @@ Display the currently active setting name:
 
 ```bash
 ccx setting status
-```
-
-### Update a Setting
-
-Overwrite a setting with your current Claude Code settings:
-
-```bash
-ccx setting update <name>
-# e.g. ccx setting update work
-```
-
-When no name is provided, updates the current setting (requires confirmation):
-
-```bash
-ccx setting update
 ```
 
 ### Show Settings Path
@@ -137,19 +124,6 @@ ccx unset                          # Interactive selection
 
 ### Compare Settings
 
-Compare current setting with Claude's official settings:
-
-```bash
-ccx setting diff
-```
-
-Compare a specific setting with Claude's official settings:
-
-```bash
-ccx setting diff <name>
-# e.g. ccx setting diff work
-```
-
 Compare two settings:
 
 ```bash
@@ -160,7 +134,7 @@ ccx setting diff <name1> <name2>
 Use semantic output (grouped by added/removed/modified):
 
 ```bash
-ccx setting diff --semantic
+ccx setting diff work personal --semantic
 ```
 
 ## Environment Variables
@@ -173,9 +147,10 @@ ccx setting diff --semantic
 
 | Purpose | Path |
 |---------|------|
-| Claude Code settings | `~/.claude/settings.json` |
+| Claude Code settings | `~/.claude/settings.json` (symlink) |
 | Stored settings | `~/.config/ccx/settings/<name>.json` |
-| Auto-backup | `~/.config/ccx/settings/previous.json` |
+| Setting backup | `~/.config/ccx/settings/<name>.json.bak` |
+| Switch backup | `~/.config/ccx/settings/previous.json` |
 | State tracking | `~/.config/ccx/state.json` |
 
 ## Development

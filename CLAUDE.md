@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CCX (Claude Code Context) is a CLI tool for managing multiple Claude Code settings. It allows switching between different `~/.claude/settings.json` configurations for different contexts (work, personal, projects).
+CCX (Claude Code Context) is a CLI tool for managing multiple Claude Code settings. It allows switching between different `~/.claude/settings.json` configurations for different contexts (work, personal, projects). Uses symlinks so that `~/.claude/settings.json` points directly to the stored setting file — edits in either location affect both.
 
 ## Development Commands
 
@@ -42,11 +42,11 @@ Follow TDD (Test-Driven Development):
 src/
 ├── index.ts              # CLI entry point (Commander setup)
 ├── commands/
-│   ├── setting.ts        # Setting subcommand logic (create/list/use/update/status/path/show/diff)
+│   ├── setting.ts        # Setting subcommand logic (create/list/use/status/path/show/diff)
 │   └── config.ts         # Config commands (set/unset) for modifying official settings.json
 ├── utils/
 │   ├── paths.ts          # Path constants and helpers
-│   ├── fs.ts             # File system operations
+│   ├── fs.ts             # File system operations (including symlink utilities)
 │   ├── state.ts          # State management (current setting tracking)
 │   ├── target.ts         # Setting target resolution (current/named/official)
 │   ├── prompt.ts         # User confirmation prompts
@@ -59,9 +59,10 @@ src/
 
 | Purpose | Path |
 |---------|------|
-| Claude official settings | `~/.claude/settings.json` |
+| Claude official settings | `~/.claude/settings.json` (symlink) |
 | Stored settings | `~/.config/ccx/settings/<name>.json` |
-| Auto-backup | `~/.config/ccx/settings/previous.json` |
+| Setting backup | `~/.config/ccx/settings/<name>.json.bak` |
+| Switch backup | `~/.config/ccx/settings/previous.json` |
 | State file | `~/.config/ccx/state.json` |
 
 ## State Tracking
@@ -69,9 +70,8 @@ src/
 CCX tracks the currently active setting via `~/.config/ccx/state.json`. This enables:
 - `ccx status` - show current active setting
 - `ccx path` / `ccx show` - default to current setting (use `--official` for Claude's file)
-- `ccx update` - default to current setting when no name specified
 
-State is updated only after `ccx use <name>` command.
+State is updated only after `ccx use <name>` command. With symlinks, editing `~/.claude/settings.json` directly modifies the stored setting file (they are the same file).
 
 ## Commands
 
@@ -79,12 +79,11 @@ State is updated only after `ccx use <name>` command.
 |---------|-------------|
 | `ccx create <name>` | Create new setting from current Claude config |
 | `ccx list` | List all stored settings |
-| `ccx use [name]` | Switch to setting (interactive if no name) |
-| `ccx update [name]` | Update setting from current Claude config (defaults to current, requires confirmation) |
+| `ccx use [name]` | Switch to setting via symlink (interactive if no name) |
 | `ccx status` | Show current active setting name |
 | `ccx path [--official]` | Show setting path (default: current, --official: Claude's file) |
 | `ccx show [name] [--official] [--raw]` | Show setting content (interactive if no name, --official: Claude's file) |
-| `ccx diff [name1] [name2]` | Compare settings (no args: current vs official, 1 arg: named vs official, 2 args: named vs named) |
+| `ccx diff <name1> <name2>` | Compare two named settings |
 | `ccx set <entries...> [--approve]` | Set key-value in official settings.json (dot-path, e.g. `env.KEY=val`) |
 | `ccx unset [key]` | Delete key from official settings.json (interactive if no key) |
 
