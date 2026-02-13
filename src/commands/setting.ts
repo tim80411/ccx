@@ -5,10 +5,11 @@ import {
   getSettingPath,
   getPreviousPath,
 } from "../utils/paths";
-import { ensureDir, copyFile, fileExists, listJsonFiles, readFile } from "../utils/fs";
+import { writeFile } from "fs/promises";
+import { dirname } from "path";
+import { ensureDir, fileExists, listJsonFiles, readFile, createSymlink, isSymlink, readSymlink, removeFile } from "../utils/fs";
 import { computeFileHash, saveState, loadState } from "../utils/state";
-import { confirmAction } from "../utils/prompt";
-import { resolveSettingPath, resolveSettingName, SettingTarget } from "../utils/target";
+import { resolveSettingPath, resolveSettingName, type SettingTarget } from "../utils/target";
 import {
   areFilesIdentical,
   generateUnifiedDiff,
@@ -29,6 +30,9 @@ export async function create(name: string): Promise<string> {
   const settingPath = getSettingPath(name);
 
   if (!(await fileExists(claudePath))) {
+    if (await isSymlink(claudePath)) {
+      throw new Error("Claude settings 的符號連結已損壞，請先使用 'ccx use <name>' 重新建立連結");
+    }
     throw new Error("Claude settings 檔案不存在");
   }
 
@@ -37,7 +41,9 @@ export async function create(name: string): Promise<string> {
   }
 
   await ensureDir(getCcxSettingsDir());
-  await copyFile(claudePath, settingPath);
+  // 讀取實際內容（自動跟隨符號連結）
+  const content = await readFile(claudePath);
+  await writeFile(settingPath, content, "utf-8");
 
   return `✓ create: ${name}`;
 }
@@ -75,90 +81,51 @@ export async function use(name: string, options?: { force?: boolean }): Promise<
     throw new Error(`Setting '${name}' 不存在`);
   }
 
-  if (!options?.force && (await fileExists(claudePath))) {
-    const state = await loadState();
-    if (state) {
-      const currentHash = await computeFileHash(claudePath);
-      if (currentHash !== state.claudeSettingsHash) {
-        const shouldContinue = await confirmAction(
-          `當前設定 (${state.currentSettingName}) 已被修改，切換到 '${name}' 將會遺失這些變更。是否繼續？`
-        );
-        if (!shouldContinue) {
-          throw new Error("已取消切換");
-        }
+  // 檢查是否已經在使用此 setting（符號連結指向相同目標）
+  if (!options?.force && (await isSymlink(claudePath))) {
+    const currentTarget = await readSymlink(claudePath);
+    if (currentTarget === settingPath) {
+      const state = await loadState();
+      if (state?.currentSettingName === name) {
+        // 更新 hash（檔案可能被編輯過）
+        const newHash = await computeFileHash(settingPath);
+        await saveState({ currentSettingName: name, claudeSettingsHash: newHash });
+        return `✓ use: ${name} (已在使用中)`;
       }
     }
   }
 
-  // 備份當前設定到 previous.json
+  // 備份當前設定到 previous.json（讀取實際內容，不是連結本身）
   if (await fileExists(claudePath)) {
     await ensureDir(getCcxSettingsDir());
-    await copyFile(claudePath, previousPath);
+    const content = await readFile(claudePath);
+    await writeFile(previousPath, content, "utf-8");
   }
 
-  await copyFile(settingPath, claudePath);
+  // 移除現有檔案或符號連結（包含損壞的連結）
+  if ((await fileExists(claudePath)) || (await isSymlink(claudePath))) {
+    await removeFile(claudePath);
+  }
 
-  const newHash = await computeFileHash(claudePath);
+  // 確保父目錄存在
+  await ensureDir(dirname(claudePath));
+
+  // 建立符號連結：claudePath → settingPath
+  await createSymlink(settingPath, claudePath);
+
+  // 建立 .bak 備份
+  await ensureDir(getCcxSettingsDir());
+  const settingContent = await readFile(settingPath);
+  await writeFile(`${settingPath}.bak`, settingContent, "utf-8");
+
+  // 更新狀態
+  const newHash = await computeFileHash(settingPath);
   await saveState({
     currentSettingName: name,
     claudeSettingsHash: newHash,
   });
 
   return `✓ use: ${name}`;
-}
-
-/**
- * 更新 setting（從當前 claude settings 覆蓋）
- * @param name setting 名稱（可選，預設為當前 setting）
- * @returns 成功訊息
- */
-export async function update(name?: string): Promise<string> {
-  if (name === "previous") {
-    throw new Error("'previous' 是保留名稱，無法使用");
-  }
-
-  const target: SettingTarget = name
-    ? { type: "named", name }
-    : { type: "current" };
-
-  const targetName = await resolveSettingName(target);
-  if (!targetName) {
-    throw new Error("無法解析目標 setting 名稱");
-  }
-
-  const settingPath = getSettingPath(targetName);
-  const claudePath = getClaudeSettingsPath();
-
-  if (!(await fileExists(settingPath))) {
-    throw new Error(`Setting '${targetName}' 不存在`);
-  }
-
-  if (!(await fileExists(claudePath))) {
-    throw new Error("Claude settings 檔案不存在");
-  }
-
-  // 若未指定名稱，使用當前 setting 時需確認
-  if (!name) {
-    const shouldContinue = await confirmAction(
-      `確定要用當前 Claude settings 覆蓋 '${targetName}' 嗎？`
-    );
-    if (!shouldContinue) {
-      throw new Error("已取消更新");
-    }
-  }
-
-  await copyFile(claudePath, settingPath);
-
-  const state = await loadState();
-  if (state?.currentSettingName === targetName) {
-    const newHash = await computeFileHash(claudePath);
-    await saveState({
-      currentSettingName: targetName,
-      claudeSettingsHash: newHash,
-    });
-  }
-
-  return `✓ update: ${targetName}`;
 }
 
 /**
@@ -240,36 +207,26 @@ export async function selectSetting(): Promise<string> {
 }
 
 /**
- * 比較兩個設定檔的差異
- * @param arg1 第一個參數（可選）
- * @param arg2 第二個參數（可選）
+ * 比較兩個 named settings 的差異
+ * @param name1 第一個 setting 名稱
+ * @param name2 第二個 setting 名稱
  * @param options.semantic 是否使用語意化差異格式
  * @returns 包含輸出和 exit code 的物件
  */
 export async function diff(
-  arg1?: string,
-  arg2?: string,
+  name1: string,
+  name2: string,
   options?: { semantic?: boolean }
 ): Promise<{ output: string; exitCode: number }> {
-  // 解析目標
-  const { left, right } = resolveDiffTargets(arg1, arg2);
-
-  const leftPath = await resolveSettingPath(left);
-  const rightPath = await resolveSettingPath(right);
+  const leftPath = getSettingPath(name1);
+  const rightPath = getSettingPath(name2);
 
   // 驗證檔案存在
-  if (left.type === "named" && !(await fileExists(leftPath))) {
-    throw new Error(`Setting '${left.name}' 不存在`);
+  if (!(await fileExists(leftPath))) {
+    throw new Error(`Setting '${name1}' 不存在`);
   }
-  if (left.type === "current" && !(await fileExists(leftPath))) {
-    throw new Error("Setting 檔案不存在");
-  }
-
-  if (right.type === "named" && !(await fileExists(rightPath))) {
-    throw new Error(`Setting '${right.name}' 不存在`);
-  }
-  if (right.type === "official" && !(await fileExists(rightPath))) {
-    throw new Error("Claude settings 檔案不存在");
+  if (!(await fileExists(rightPath))) {
+    throw new Error(`Setting '${name2}' 不存在`);
   }
 
   // 檢查是否相同
@@ -277,44 +234,10 @@ export async function diff(
     return { output: "", exitCode: 0 };
   }
 
-  // 產生標籤
-  const leftLabel = (await resolveSettingName(left)) ?? "official";
-  const rightLabel = (await resolveSettingName(right)) ?? "official";
-
   // 產生差異輸出
   const output = options?.semantic
-    ? await generateSemanticDiff(leftPath, leftLabel, rightPath, rightLabel)
-    : await generateUnifiedDiff(leftPath, leftLabel, rightPath, rightLabel);
+    ? await generateSemanticDiff(leftPath, name1, rightPath, name2)
+    : await generateUnifiedDiff(leftPath, name1, rightPath, name2);
 
   return { output, exitCode: 1 };
-}
-
-/**
- * 解析 diff 指令的目標設定檔
- */
-function resolveDiffTargets(
-  arg1?: string,
-  arg2?: string
-): { left: SettingTarget; right: SettingTarget } {
-  // ccx diff → current vs official
-  if (!arg1 && !arg2) {
-    return {
-      left: { type: "current" },
-      right: { type: "official" },
-    };
-  }
-
-  // ccx diff <name> → named vs official
-  if (arg1 && !arg2) {
-    return {
-      left: { type: "named", name: arg1 },
-      right: { type: "official" },
-    };
-  }
-
-  // ccx diff <name1> <name2> → named vs named
-  return {
-    left: { type: "named", name: arg1! },
-    right: { type: "named", name: arg2! },
-  };
 }

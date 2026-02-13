@@ -107,18 +107,4 @@ describe("CLI 整合測試", () => {
     });
   });
 
-  describe("setting update <name>", () => {
-    test("應成功更新 setting", async () => {
-      await writeFile(claudeSettingsPath, JSON.stringify({ updated: true }));
-      await writeFile(join(ccxSettingsDir, "work.json"), "{}");
-
-      const result = await runCli("setting update work", {
-        CCX_CLAUDE_SETTINGS: claudeSettingsPath,
-        CCX_SETTINGS_DIR: ccxSettingsDir,
-      });
-
-      expect(result.stdout).toContain("✓ update: work");
-      expect(result.exitCode).toBe(0);
-    });
-  });
 });

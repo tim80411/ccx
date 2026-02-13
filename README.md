@@ -4,6 +4,8 @@
 
 CLI 工具，用於管理多組 Claude Code settings。可在不同情境（工作、個人、專案）之間快速切換 `~/.claude/settings.json` 設定。
 
+透過符號連結（symlink）機制，`~/.claude/settings.json` 會直接指向儲存的 setting 檔案，編輯任一路徑都會同步更新。
+
 ## 安裝
 
 ### Homebrew (推薦)
@@ -48,7 +50,7 @@ ccx setting list
 
 ### 切換 Setting
 
-切換到指定的 setting（會自動備份目前設定到 `previous`）：
+切換到指定的 setting（建立符號連結，會自動備份目前設定到 `previous`）：
 
 ```bash
 ccx setting use <name>
@@ -67,21 +69,6 @@ ccx setting use
 
 ```bash
 ccx setting status
-```
-
-### 更新 Setting
-
-用目前的 Claude Code 設定覆蓋指定的 setting：
-
-```bash
-ccx setting update <name>
-# 例如: ccx setting update work
-```
-
-未指定名稱時，會更新當前使用中的 setting（需確認）：
-
-```bash
-ccx setting update
 ```
 
 ### 顯示設定路徑
@@ -144,19 +131,6 @@ ccx unset                          # 互動選擇要刪除的 key
 
 ### 比較設定差異
 
-比較當前 setting 與 Claude 官方設定：
-
-```bash
-ccx setting diff
-```
-
-比較指定 setting 與 Claude 官方設定：
-
-```bash
-ccx setting diff <name>
-# 例如: ccx setting diff work
-```
-
 比較兩個 setting：
 
 ```bash
@@ -167,7 +141,7 @@ ccx setting diff <name1> <name2>
 使用語意化輸出（依 added/removed/modified 分組）：
 
 ```bash
-ccx setting diff --semantic
+ccx setting diff work personal --semantic
 ```
 
 ## 環境變數
@@ -180,9 +154,10 @@ ccx setting diff --semantic
 
 | 用途 | 路徑 |
 |------|------|
-| Claude Code 設定 | `~/.claude/settings.json` |
+| Claude Code 設定 | `~/.claude/settings.json`（符號連結） |
 | 儲存的 Settings | `~/.config/ccx/settings/<name>.json` |
-| 自動備份 | `~/.config/ccx/settings/previous.json` |
+| Setting 備份 | `~/.config/ccx/settings/<name>.json.bak` |
+| 切換前備份 | `~/.config/ccx/settings/previous.json` |
 | 狀態追蹤 | `~/.config/ccx/state.json` |
 
 ## 開發
