@@ -1,6 +1,6 @@
 {
   "name": "claude-code-context",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "CLI tool for managing multiple Claude Code settings profiles. Switch between different ~/.claude/settings.json configurations for different contexts.",
   "module": "src/index.ts",
   "type": "module",
